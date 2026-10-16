@@ -1,0 +1,155 @@
+/* Registry Manager shares the selected Nova palette, including custom themes. */
+.smartllm-nova-registry-backdrop {
+    position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center;
+    justify-content: center; padding: 24px; background: var(--sln-design-backdrop);
+    box-sizing: border-box;
+}
+.smartllm-nova-registry-dialog {
+    width: min(1240px, 100%); height: min(880px, 100%); min-width: 0; min-height: 0;
+    display: flex; flex-direction: column; overflow: hidden; border-radius: 12px;
+    border: 1px solid var(--sln-design-dialog-border); background: var(--sln-design-node-bg);
+    color: var(--sln-design-text); box-shadow: var(--sln-design-dialog-shadow);
+    font: 13px/1.45 Arial, sans-serif; color-scheme: var(--sln-design-color-scheme);
+}
+.smartllm-nova-registry-dialog * { box-sizing: border-box; }
+.smartllm-nova-registry-dialog [hidden] { display: none !important; }
+.smartllm-nova-registry-dialog :focus-visible {
+    outline: 2px solid var(--sln-design-accent); outline-offset: 2px;
+}
+.smartllm-nova-registry-dialog button, .smartllm-nova-registry-dialog input,
+.smartllm-nova-registry-dialog select, .smartllm-nova-registry-dialog textarea { font: inherit; }
+.smartllm-nova-registry-header {
+    display: flex; align-items: center; gap: 8px; padding: 16px 18px 12px; flex: 0 0 auto;
+}
+.smartllm-nova-registry-heading { flex: 1; min-width: 0; }
+.smartllm-nova-registry-header h2 { margin: 0; font-size: 18px; line-height: 1.35; }
+.smartllm-nova-registry-caption { margin: 4px 0 0; color: var(--sln-design-muted); font-size: 12px; }
+.smartllm-nova-manager-tabs {
+    display: flex; gap: 6px; align-items: center; margin: 0 18px 12px; padding: 7px;
+    border: 1px solid var(--sln-design-bar-border); border-radius: 7px; background: var(--sln-design-bar-bg);
+}
+.smartllm-nova-manager-tabs .smartllm-nova-manager-tab {
+    border-color: var(--sln-design-pill-border); border-radius: var(--sln-design-pill-radius);
+    color: var(--sln-design-bar-text); background: transparent; padding: 5px 12px;
+}
+.smartllm-nova-manager-tabs .smartllm-nova-manager-tab:hover { background: var(--sln-design-bar-hover); }
+.smartllm-nova-manager-tabs .smartllm-nova-manager-tab[aria-selected=true] {
+    border-color: var(--sln-design-selected-border); color: var(--sln-design-selected-text);
+    background: var(--sln-design-selected-bg); box-shadow: var(--sln-design-selected-shadow); font-weight: bold;
+}
+.smartllm-nova-registry-body { display: grid; grid-template-columns: minmax(230px, 29%) minmax(0, 1fr); min-height: 0; flex: 1; }
+.smartllm-nova-registry-sidebar {
+    display: flex; flex-direction: column; min-width: 0; min-height: 0; gap: 9px;
+    border-right: 1px solid var(--sln-design-divider); padding: 0 14px 14px 18px;
+}
+.smartllm-nova-registry-list { overflow: auto; min-height: 0; flex: 1; overscroll-behavior: contain; }
+.smartllm-nova-registry-count { color: var(--sln-design-muted); font-size: 11px; }
+.smartllm-nova-registry-item {
+    display: block; width: 100%; padding: 10px; margin-bottom: 5px; border-radius: 6px;
+    border: 1px solid var(--sln-design-divider); background: var(--sln-design-row-bg);
+    color: var(--sln-design-text); text-align: left; cursor: pointer; overflow-wrap: anywhere;
+}
+.smartllm-nova-registry-item:hover { background: var(--sln-design-option-bg); border-color: var(--sln-design-control-border); }
+.smartllm-nova-registry-item[aria-selected=true] {
+    background: var(--sln-design-control-selected); border-color: var(--sln-design-control-strong);
+}
+.smartllm-nova-registry-item strong { display: block; font-weight: 600; }
+.smartllm-nova-registry-item small { display: block; margin-top: 4px; color: var(--sln-design-muted); }
+.smartllm-nova-registry-form {
+    overflow: auto; min-width: 0; padding: 0 18px 16px; display: flex; flex-direction: column;
+    gap: 12px; overscroll-behavior: contain;
+}
+.smartllm-nova-registry-section {
+    border: 1px solid var(--sln-design-divider); border-radius: 7px; background: var(--sln-design-row-bg);
+}
+.smartllm-nova-registry-section > summary {
+    padding: 11px 12px; font-weight: 600; cursor: pointer; color: var(--sln-design-text);
+}
+.smartllm-nova-registry-section > summary:hover { color: var(--sln-design-accent); }
+.smartllm-nova-registry-section[open] > summary { border-bottom: 1px solid var(--sln-design-divider); }
+.smartllm-nova-registry-section-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px; }
+.smartllm-nova-registry-section-note { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--sln-design-muted); }
+.smartllm-nova-registry-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.smartllm-nova-registry-field--wide { grid-column: 1 / -1; }
+.smartllm-nova-registry-field label { font-size: 11px; color: var(--sln-design-bar-text); text-transform: uppercase; letter-spacing: .03em; }
+.smartllm-nova-registry-field input, .smartllm-nova-registry-field select,
+.smartllm-nova-registry-field textarea, .smartllm-nova-registry-sidebar input,
+.smartllm-nova-docker-toolbar select, .smartllm-nova-docker-runtime select {
+    width: 100%; min-width: 0; padding: 7px 9px; border: 1px solid var(--sln-design-input-border);
+    border-radius: 5px; background: var(--sln-design-input-bg); color: var(--sln-design-text);
+    color-scheme: var(--sln-design-color-scheme);
+}
+.smartllm-nova-registry-dialog select {
+    border-color: var(--sln-design-select-border); background: var(--sln-design-select-bg); color: var(--sln-design-select-text);
+}
+.smartllm-nova-registry-dialog select:hover { border-color: var(--sln-design-select-hover-border); }
+.smartllm-nova-registry-dialog option { background: var(--sln-design-menu-bg); color: var(--sln-design-text); }
+.smartllm-nova-registry-field textarea { min-height: 88px; resize: vertical; line-height: 1.5; }
+.smartllm-nova-registry-field textarea[name=expected_sha256] { font: 12px/1.5 monospace; }
+.smartllm-nova-registry-field--check { flex-direction: row; align-items: center; gap: 8px; padding-top: 18px; }
+.smartllm-nova-registry-field--check input { width: 15px; height: 15px; accent-color: var(--sln-design-accent); }
+.smartllm-nova-registry-field--check label { text-transform: none; font-size: 13px; color: var(--sln-design-text); letter-spacing: normal; }
+.smartllm-nova-registry-field-help { margin: 0; font-size: 11px; color: var(--sln-design-muted); line-height: 1.4; }
+.smartllm-nova-registry-dialog input:disabled, .smartllm-nova-registry-dialog select:disabled,
+.smartllm-nova-registry-dialog textarea:disabled { opacity: .6; }
+.smartllm-nova-registry-button, .smartllm-nova-registry-classic {
+    padding: 7px 11px; border: 1px solid var(--sln-design-control-border); border-radius: 5px;
+    background: var(--sln-design-control-bg); color: var(--sln-design-accent); cursor: pointer;
+}
+.smartllm-nova-registry-button:hover, .smartllm-nova-registry-classic:hover { background: var(--sln-design-control-hover); }
+.smartllm-nova-registry-button:disabled { opacity: .4; cursor: default; }
+.smartllm-nova-registry-button--primary { background: var(--sln-design-control-primary); border-color: var(--sln-design-control-strong); font-weight: 600 !important; }
+.smartllm-nova-registry-danger { color: var(--sln-design-danger); border-color: var(--sln-design-danger); background: transparent; }
+.smartllm-nova-registry-footer { flex: 0 0 auto; border-top: 1px solid var(--sln-design-divider); padding: 10px 18px 14px; }
+.smartllm-nova-registry-status { color: var(--sln-design-muted); overflow-wrap: anywhere; min-height: 19px; }
+.smartllm-nova-registry-status[data-kind=error] { color: var(--sln-design-error); }
+.smartllm-nova-registry-status[data-kind=success] { color: var(--sln-design-success); }
+.smartllm-nova-registry-status[data-kind=warn] { color: var(--sln-design-warning); }
+.smartllm-nova-registry-actions { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.smartllm-nova-registry-action-group { display: flex; gap: 7px; flex-wrap: wrap; }
+.smartllm-nova-docker-body { min-height: 0; flex: 1; overflow: auto; padding: 0 18px 16px; overscroll-behavior: contain; }
+.smartllm-nova-docker-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.smartllm-nova-docker-toolbar label { color: var(--sln-design-bar-text); font-size: 11px; text-transform: uppercase; }
+.smartllm-nova-docker-toolbar select { width: auto; }
+.smartllm-nova-docker-note { color: var(--sln-design-muted); margin: 0; font-size: 12px; line-height: 1.5; }
+.smartllm-nova-docker-card, .smartllm-nova-docker-image {
+    padding: 14px; border: 1px solid var(--sln-design-divider); border-radius: 7px; background: var(--sln-design-row-bg);
+}
+.smartllm-nova-docker-card { margin-bottom: 16px; }
+.smartllm-nova-docker-card h3, .smartllm-nova-docker-image h3 { margin: 0; font-size: 15px; }
+.smartllm-nova-docker-card p { margin: 8px 0; }
+.smartllm-nova-docker-card-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin-bottom: 8px; }
+.smartllm-nova-docker-card-heading h3 { flex: 1; }
+.smartllm-nova-registry-badge { display: inline-block; padding: 2px 7px; border: 1px solid var(--sln-design-divider); border-radius: 5px; font-size: 11px; color: var(--sln-design-muted); }
+.smartllm-nova-registry-badge[data-kind=success] { color: var(--sln-design-success); }
+.smartllm-nova-registry-badge[data-kind=warn] { color: var(--sln-design-warning); }
+.smartllm-nova-docker-detail { display: grid; grid-template-columns: minmax(120px, auto) 1fr; gap: 5px 14px; margin: 10px 0; font-size: 12px; }
+.smartllm-nova-docker-detail dt { color: var(--sln-design-muted); }
+.smartllm-nova-docker-detail dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.smartllm-nova-docker-guide { display: inline-block; margin-top: 4px; color: var(--sln-design-accent); }
+.smartllm-nova-docker-images-heading { margin: 0 0 5px; font-size: 15px; }
+.smartllm-nova-docker-images { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.smartllm-nova-docker-image { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+.smartllm-nova-docker-image .smartllm-nova-docker-card-heading { margin-bottom: 0; }
+.smartllm-nova-docker-reference { padding: 8px 10px; border: 1px solid var(--sln-design-divider); border-radius: 5px; background: var(--sln-design-input-bg); }
+.smartllm-nova-docker-reference summary { color: var(--sln-design-label); font: 12px/1.5 monospace; overflow-wrap: anywhere; cursor: pointer; }
+.smartllm-nova-docker-reference code { display: block; font-size: 11px; margin-top: 8px; overflow-wrap: anywhere; color: var(--sln-design-muted); }
+.smartllm-nova-docker-runtime { display: flex; flex-direction: column; gap: 5px; }
+.smartllm-nova-docker-runtime label { font-size: 11px; color: var(--sln-design-bar-text); text-transform: uppercase; letter-spacing: .03em; }
+.smartllm-nova-docker-image-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: auto; padding-top: 4px; }
+.smartllm-nova-registry-classic { width: 100%; margin: 6px 0; }
+@media (max-width: 820px) {
+    .smartllm-nova-registry-backdrop { padding: 12px; }
+    .smartllm-nova-registry-body { grid-template-columns: 1fr; grid-template-rows: minmax(120px, 28%) minmax(0, 1fr); }
+    .smartllm-nova-registry-sidebar { border-right: 0; border-bottom: 1px solid var(--sln-design-divider); padding-right: 18px; }
+    .smartllm-nova-registry-form { padding-top: 12px; }
+    .smartllm-nova-docker-images { grid-template-columns: 1fr; }
+    .smartllm-nova-registry-header { flex-wrap: wrap; }
+    .smartllm-nova-registry-heading { flex-basis: 100%; }
+}
+@media (max-width: 520px) {
+    .smartllm-nova-registry-section-body { grid-template-columns: 1fr; }
+    .smartllm-nova-registry-field--check { padding-top: 0; }
+    .smartllm-nova-registry-actions { gap: 8px; }
+    .smartllm-nova-registry-button { padding: 6px 8px; }
+}

@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# ComfyUI imports this checkout directly; the distribution supplies dependencies.
+[tool.setuptools]
+packages = []
+include-package-data = false
+
+[project]
+name = "ComfyUI_SmartLLM_Nova"
+description = "Compact configurable LLM, vision, tagging and detection panels for classic ComfyUI and Nodes 2.0, with registry-managed models and native or Docker backends."
+version = "1.0.0"
+license = {file = "LICENSE"}
+dependencies = [
+    "torch",
+    "numpy",
+    "Pillow",
+    "opencv-python",
+    "safetensors>=0.4,<0.9",
+    "torchvision",
+    "timm>=1.0,<1.1",
+    "psutil",
+    "requests",
+    "aiohttp",
+    "transformers>=4.51,<5.4",
+    "huggingface_hub>=0.30,<2",
+    "accelerate>=1,<2",
+    "openai>=1,<2",
+    "gguf>=0.6,<0.20",
+]
+
+[project.optional-dependencies]
+sml = [
+    "bitsandbytes>=0.45,<0.51",
+    "llama-cpp-python>=0.3.16,<0.4",
+    "onnxruntime>=1.21,<2",
+    "ultralytics>=8.4.67,<8.5",
+    "qwen-vl-utils>=0.0.14,<0.1",
+    "peft>=0.18.1,<0.21",
+]
+
+[project.urls]
+Repository = "https://github.com/r-vage/ComfyUI_SmartLLM_Nova"
+Documentation = "https://github.com/r-vage/ComfyUI_SmartLLM_Nova/tree/main/Readme"
+
+[tool.comfy]
+PublisherId = "rvage"
+DisplayName = "ComfyUI SmartLLM Nova"
+Icon = "https://raw.githubusercontent.com/r-vage/ComfyUI_SmartLLM_Nova/refs/heads/main/Readme/icon_eclipse.png"

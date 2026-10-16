@@ -1,0 +1,21 @@
+{
+  "_comments": {
+    "description": "SmartLLM ComfyUI Node Configuration",
+    "log_level_options": "error | warning | info | debug",
+    "llm_models_path": "Relative path from ComfyUI models folder (e.g., 'LLM'). Used for Python file scanning.",
+    "llm_models_absolute_path": "REQUIRED FOR DOCKER: Full absolute path to LLM models folder. Docker containers need the complete path for volume mounts.",
+    "retry_download_attempts": "Number of times to retry download if hash verification fails (0 to disable auto-retry)",
+    "hf_token": "Optional Hugging Face token for model acquisition. Leave empty to use the environment or login store.",
+    "modelscope_token": "Optional ModelScope token for targeted GGUF acquisition. Leave empty to use MODELSCOPE_API_TOKEN.",
+    "few_shot_training_file": "Name of the few-shot training JSON file to load from config/.",
+    "node_design": "Theme filename (without .json) from this repo\u2019s themes/ or themes/custom/ folder."
+  },
+  "log_level": "info",
+  "llm_models_path": "LLM",
+  "llm_models_absolute_path": "",
+  "retry_download_attempts": 2,
+  "hf_token": "",
+  "modelscope_token": "",
+  "few_shot_training_file": "llm_few_shot_training.json",
+  "node_design": "neutral"
+}
