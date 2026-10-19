@@ -1,3 +1,33 @@
+## 2026-10-19
+
+**Version: 1.1.0**
+
+**Feat**
+- Add Neutral Jade, Neutral Ocean, Neutral Amethyst and Neutral Amber, pairing Neutral node backgrounds and titles with each palette's colored controls. Eclipse's Theme groups option applies matching Neutral group colors.
+- Add native ComfyUI text encoder generation alongside the existing Smart LM backends, with compatible local files grouped in the model selector.
+- Reuse ComfyUI loading, tokenization, generation and memory management with Nova tasks, prompts, training examples, image inputs, sampling and Keep loaded behavior.
+- Keep shared text encoder files outside registry editing and deletion; preserve saved selections and hide controls that do not apply to native generation.
+
+**Fix**
+- Resolve native CUDA selections to a concrete GPU index before loading and cache reuse, preventing failures in ComfyUI's dynamic VRAM manager.
+
+**Perf**
+- Discover compatible encoders from cached checkpoint headers and invalidate model/output reuse when files change.
+
+**Docs**
+- Document the new variants, linked selection across the Nova packs and group appearance.
+- Document native encoder selection, supported files, sampling behavior and shared-file ownership.
+
+**Changed files**
+- `.defaults/themes/neutral-jade.json.example`, `.defaults/themes/neutral-ocean.json.example`
+- `.defaults/themes/neutral-amethyst.json.example`, `.defaults/themes/neutral-amber.json.example`
+- `Readme/Node_Design.md`, `Readme/Nova_Panels.md`, `Readme/Visual_Tour.md`
+- `core/sml/backend_comfyui.py`, `core/sml/text_encoders.py`, `core/sml/loader_base.py`
+- `core/sml/model_acquisition.py`, `core/sml/model_cache.py`, `core/sml/model_files.py`, `core/sml/model_registry.py`
+- `core/sml/panel_configuration.py`, `py/RvLoader_SmartLMLoader.py`
+- `js/nova-panel-controls.js`, `js/nova-panel-form.js`, `js/smartllm-registry-manager.js`
+- `Readme/Smart_LM_Loader_Guide.md`, `pyproject.toml`
+
 ## 2026-10-16
 
 **Version: 1.0.0 — Initial release**

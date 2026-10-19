@@ -529,7 +529,7 @@ class RegistryManager {
     async refresh(preferred = this.selected || this.pendingSelection) {
         const result = await this.action('Refreshing registry', () => request('/smartllm-nova/model_list'));
         if (!result) return;
-        this.models = Array.isArray(result) ? result : [];
+        this.models = Array.isArray(result) ? result.filter(model => model.editable !== false) : [];
         this.modelsLoaded = true;
         this.pendingSelection = null;
         if (!this.models.some(model => model.display_name === this.selected)) {

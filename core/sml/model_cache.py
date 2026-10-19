@@ -255,7 +255,7 @@ def is_gguf_cache_empty() -> bool:
 # ============================================================================
 
 
-def clear_all_model_caches():
+def clear_all_model_caches(*, include_text_encoders=True):
     # Clear ALL model caches across all backends to free VRAM.
     #
     # This is called when loading a different model to ensure VRAM is freed
@@ -266,6 +266,11 @@ def clear_all_model_caches():
     # - GGUF cache (_gguf_model_cache)
     # - vLLM Native cache (if available)
     log.debug(_LOG_PREFIX, "Clearing all model caches for multi-node workflow...")
+
+    if include_text_encoders:
+        from .backend_comfyui import clear_text_encoder_cache
+
+        clear_text_encoder_cache()
 
     # Clear Transformers cache
     clear_transformers_cache()

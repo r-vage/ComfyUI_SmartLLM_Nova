@@ -28,6 +28,7 @@ A comprehensive guide to the **Smart LM Loader** node for ComfyUI SmartLLM Nova.
     - [LLM (Text-Only)](#llm-text-only)
     - [WD14 Tagger](#wd14-tagger)
   - [Backends](#backends)
+    - [ComfyUI text encoders](#comfyui-text-encoders)
     - [Transformers](#transformers)
     - [GGUF (llama-cpp-python)](#gguf-llama-cpp-python)
     - [vLLM (Docker)](#vllm-docker)
@@ -69,7 +70,7 @@ A comprehensive guide to the **Smart LM Loader** node for ComfyUI SmartLLM Nova.
 
 ## Overview
 
-The **Smart LM Loader** is a unified node for loading and running vision-language models, text-only LLMs, and WD14 taggers in ComfyUI. It uses a **registry-based workflow** — pick a model from the unified dropdown, choose a task, and generate. No templates, no manual path resolution.
+The **Smart LM Loader** is a unified node for loading and running vision-language models, text-only LLMs, and WD14 taggers in ComfyUI. Pick a registered model or a compatible local ComfyUI text encoder from the unified dropdown, choose a task, and generate.
 
 ### What Can This Node Do?
 
@@ -282,6 +283,24 @@ The model family is **auto-detected from the registry entry**. Each model in the
 ---
 
 ## Backends
+
+### ComfyUI text encoders
+
+This additional backend reuses local encoder files through the same `comfy.sd.load_clip()` and `tokenize → generate → decode` APIs used by ComfyUI's **Load CLIP** and **Generate Text** nodes. Existing Transformers, GGUF, Docker and tagging backends remain available.
+
+1. Place a compatible `.safetensors` or `.sft` file in ComfyUI's `models/text_encoders` folder. Configured extra text encoder folders and subfolders are included too.
+2. Open the loader's **Model** selector and choose a `ComfyUI: filename` entry under **ComfyUI text encoders**. Opening the selector refreshes the available files.
+3. Choose a task, enter a prompt and run the node. Connect images when the selected file includes supported vision weights.
+
+Discovery reads checkpoint headers, not model weights or filename guesses. Supported native generation families include Gemma 2/3/4, Qwen3, Qwen3.5, Qwen3-VL and Qwen2.5-VL 7B where supported by the installed ComfyUI. Ordinary CLIP/T5 encoders, truncated diffusion encoders, music vocabularies, missing Gemma tokenizers and Qwen checkpoints missing a required output head are excluded. A text encoder used for diffusion conditioning is not necessarily a complete language generator. Files are reused in place; no model download, conversion or registry registration is needed.
+
+**Device** selects ComfyUI's native automatic policy or the requested CPU/CUDA/MPS device. Checkpoint precision, attention and memory offloading follow ComfyUI. **Keep loaded** reuses the encoder while the file and loading settings match. Turning it off releases Nova's encoder after execution, including errors. ComfyUI can still offload cached weights to manage memory.
+
+Prompts, task chaining, image batches, connected instructions and exact seeds retain Nova's existing workflow. **Training** uses the node's Standard/NSFW examples as labeled demonstrations in the system instructions; the native tokenizer accepts a single prompt rather than a chat message list. Native models use non-thinking templates where supported.
+
+Sampling supports temperature, top-k, top-p, min-p, repetition penalty and greedy generation. Native generation determines its own context allocation, so context-size, beam-search and Transformers-specific controls are hidden. Custom stop strings trim the decoded response; they do not stop native token generation early. Native EOS tokens still stop generation normally.
+
+These shared files are outside Registry Manager's editing and deletion actions. Remove or replace them using your normal ComfyUI model-folder workflow. A missing saved selection remains visible as unavailable instead of silently choosing another model.
 
 ### Transformers
 

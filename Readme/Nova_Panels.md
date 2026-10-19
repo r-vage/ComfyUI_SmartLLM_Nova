@@ -31,7 +31,7 @@ WD14, quantization, attention, cleanup and model retention. Smart Detection
 keeps its IMAGE/MASK/SEGS/JSON list outputs. No model acquisition, trust, device,
 or backend policies are replaced by the panels.
 
-Choose **Settings → SmartLLM Nova → Appearance → Node design** for Neutral (default), Jade, Ocean, Amethyst, Amber or a [custom JSON theme](Node_Design.md). The setting belongs only to this repo; it also updates saved node backgrounds.
+Choose **Settings → SmartLLM Nova → Appearance → Node design** for Neutral (default), Jade, Ocean, Amethyst, Amber, their Neutral color variants or a [custom JSON theme](Node_Design.md). The setting belongs only to this repo; it also updates saved node backgrounds.
 
 ## Seeds
 

@@ -71,7 +71,7 @@ export class PanelForm {
             if (wd) this.section(content, 'tagging', 'Tagging', ['threshold', 'char_threshold', 'replace_underscore']);
             else {
                 this.section(content, 'prompt', 'Prompt', ['user_prompt']);
-                this.section(content, 'generation', 'Generation', [['context_size', 'max_tokens'], ...(entry?.has_vision && !['Florence', 'Mistral', 'LLaVA', 'VLM'].includes(family) ? ['frame_count'] : [])]);
+                this.section(content, 'generation', 'Generation', [backend === 'comfyui' ? 'max_tokens' : ['context_size', 'max_tokens'], ...(entry?.has_vision && (backend === 'comfyui' || !['Florence', 'Mistral', 'LLaVA', 'VLM'].includes(family)) ? ['frame_count'] : [])]);
                 if (this.params.use_advanced) this.sampling(content, florence, backend, entry?.has_vision === false);
             }
             this.section(content, 'hardware', 'Hardware', ['device', ...(backend === 'transformers' ? ['attention_mode', ...(entry?.has_vision === false ? [] : ['use_torch_compile'])] : [])]);
@@ -112,12 +112,15 @@ export class PanelForm {
                 this.status = data.message ?? 'Model files deleted.'; expireMetadataCache(); await this.refresh(false);
             } catch (error) { this.status = error.message; this.render(); }
         });
-        actions.append(registry, remove, refresh); parent.append(actions);
+        actions.append(registry);
+        if (this.model === this.params[this.modelKey] && this.entry?.can_delete !== false) actions.append(remove);
+        actions.append(refresh); parent.append(actions);
+        if (this.entry?.backend === 'comfyui') parent.append(element('div', 'sln-panel-note', 'Local ComfyUI text encoder. File precision and memory management follow ComfyUI. Add files to models/text_encoders, then refresh the model list.'));
     }
     sampling(parent, florence, backend, textOnly) {
-        const rows = [ ...(!florence ? [['temperature', 'top_p', 'top_k'], 'repetition_penalty'] : []), ...(!textOnly ? [['num_beams', 'do_sample']] : []) ];
+        const rows = [ ...(!florence ? [['temperature', 'top_p', 'top_k'], 'repetition_penalty'] : []), ...(backend === 'comfyui' ? ['do_sample'] : !textOnly ? [['num_beams', 'do_sample']] : []) ];
         if (this.spec.kind === 'loader' && !florence) {
-            if (['gguf', 'llamacpp', 'ollama', 'vllm', 'sglang'].includes(backend)) rows.push('min_p');
+            if (['comfyui', 'gguf', 'llamacpp', 'ollama', 'vllm', 'sglang'].includes(backend)) rows.push('min_p');
             rows.push('stop_sequences');
             if (['gguf', 'llamacpp', 'ollama'].includes(backend)) rows.push('mirostat', ['mirostat_eta', 'mirostat_tau'], 'repeat_last_n');
         }
@@ -203,7 +206,7 @@ export class PanelForm {
         const p = this.params;
         return ({model: p[this.modelKey],
             prompt: p.user_prompt ? `${p.user_prompt.length} characters` : '',
-            generation: `${p.max_tokens} tokens · ${p.context_size} context`,
+            generation: this.entry?.backend === 'comfyui' ? `${p.max_tokens} tokens` : `${p.max_tokens} tokens · ${p.context_size} context`,
             hardware: p.device, sampling: p.do_sample ? `Temperature ${p.temperature}` : 'Greedy',
             tagging: `${p.threshold} · ${p.char_threshold}`, detection: p.task,
             adjustments: `Crop ${p.crop_factor} · Dilation ${p.dilation}`, mask: `Grow ${p.grow} · Blur ${p.blur}`,

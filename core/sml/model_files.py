@@ -4451,6 +4451,9 @@ def force_verify_registered_model(
             "error": f"Model not found in registry: {display_name}",
         }
 
+    if entry.get("backend") == "comfyui":
+        return {"success": False, "error": "Shared ComfyUI text encoders have no Nova acquisition provenance."}
+
     try:
         paths = _registered_model_verification_paths(entry, quantization)
         repo_id = entry.get("repo_id")
@@ -4562,6 +4565,9 @@ def delete_model(display_name: str) -> Dict[str, Any]:
             "success": False,
             "error": f"Model not found in registry: {display_name}",
         }
+
+    if entry.get("can_delete") is False:
+        return {"success": False, "error": "Shared ComfyUI text encoders cannot be deleted through Nova."}
 
     backend = entry.get("backend", "")
     repo_id = entry.get("repo_id", "")

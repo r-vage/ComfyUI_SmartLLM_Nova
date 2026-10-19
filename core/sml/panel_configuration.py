@@ -153,6 +153,17 @@ class SmartLLMPanel:
         seed = config.get("seed")
         if seed and (seed["source"] == "local" or scalar(_inputs.get("seed_input")) is None) and seed["policy"] != "fixed":
             return float("nan")
+        if cls.PANEL_KIND == "loader":
+            from .text_encoders import (
+                DISPLAY_PREFIX,
+                file_signature,
+                resolve_text_encoder_path,
+            )
+
+            model = config["parameters"]["model"]
+            if model.startswith(DISPLAY_PREFIX):
+                path = resolve_text_encoder_path(model[len(DISPLAY_PREFIX):])
+                return (configuration, file_signature(path))
         return configuration
 
     @classmethod

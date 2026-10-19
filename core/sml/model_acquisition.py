@@ -18,6 +18,7 @@ _LOG_PREFIX = "Model Acquisition"
 GGUF_BACKENDS = {"gguf", "llamacpp"}
 
 BACKEND_TO_METHOD = {
+    "comfyui": "ComfyUI",
     "transformers": "Transformers",
     "gguf": "GGUF (llama-cpp-python)",
     "ollama": "Ollama (Docker)",
@@ -114,6 +115,11 @@ def resolve_registered_model_path(
         raise ValueError("Registry entry is missing its backend")
     if not isinstance(repo_id, str) or not isinstance(name, str) or not name:
         raise ValueError("Registry entry has invalid model identity fields")
+
+    if backend == "comfyui":
+        from .text_encoders import resolve_text_encoder_path
+
+        return str(resolve_text_encoder_path(entry.get("filename"))), False
 
     if backend == "yolo":
         filename = entry.get("filename")
@@ -271,6 +277,8 @@ def acquire_registered_model(
     # Acquire one registry selection through its already-hardened backend path.
     backend = entry.get("backend")
     repo_id = entry.get("repo_id", "")
+    if backend == "comfyui":
+        return resolve_registered_model_path(entry)[0]
     if backend == "yolo":
         from .backend_yolo import download_yolo_model
 

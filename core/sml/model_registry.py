@@ -27,6 +27,12 @@ from typing import Any, Dict, List, Optional, Tuple
 from .json_store import JsonStoreError, read_json_object, update_json_object
 from .logger import log
 from .model_types import ModelFamily
+from .text_encoders import (
+    DISPLAY_PREFIX,
+    MODEL_SEPARATOR,
+    get_text_encoder_entries,
+    get_text_encoder_entry,
+)
 
 _LOG_PREFIX = "Registry"
 
@@ -190,7 +196,7 @@ def load_all_registries(force: bool = False) -> Dict[str, Dict[str, Any]]:
 MODEL_SEP_VISION = "__SEP__VISION_MODELS__"
 MODEL_SEP_TEXT = "__SEP__TEXT_MODELS__"
 MODEL_SEP_WD14 = "__SEP__WD14_MODELS__"
-_MODEL_SEPARATORS = {MODEL_SEP_VISION, MODEL_SEP_TEXT, MODEL_SEP_WD14}
+_MODEL_SEPARATORS = {MODEL_SEP_VISION, MODEL_SEP_TEXT, MODEL_SEP_WD14, MODEL_SEPARATOR}
 
 
 def get_model_list() -> List[str]:
@@ -217,6 +223,10 @@ def get_model_list() -> List[str]:
     if wd14:
         result.append(MODEL_SEP_WD14)
         result.extend(sorted(wd14))
+    text_encoders = get_text_encoder_entries()
+    if text_encoders:
+        result.append(MODEL_SEPARATOR)
+        result.extend(sorted(text_encoders))
     return result
 
 
@@ -229,6 +239,8 @@ def get_model_entry(display_name: str) -> Optional[Dict[str, Any]]:
     # Look up a model by its display name (with suffix).
     # Returns the full entry dict with "backend" and "name" fields, or None.
     # Falls back to YOLO registry if not found in shared registry.
+    if display_name.startswith(DISPLAY_PREFIX):
+        return get_text_encoder_entry(display_name)
     registry = load_all_registries()
     entry = registry.get(display_name)
     if entry is not None:
@@ -331,6 +343,8 @@ def _normalized_model_name(value: object) -> str:
         raise RegistryValidationError("name must contain 1 to 200 characters")
     if name.startswith("_"):
         raise RegistryValidationError("names beginning with '_' are reserved")
+    if name.startswith(DISPLAY_PREFIX):
+        raise RegistryValidationError("The ComfyUI prefix is reserved for local text encoders")
     if any(character in name for character in ("/", "\\", "\x00", "\n", "\r")):
         raise RegistryValidationError("name contains an unsafe character")
     if name in _MODEL_SEPARATORS:
@@ -657,6 +671,8 @@ def inspect_registry_candidate(
 
 
 def _entry_storage(entry: dict[str, Any]) -> tuple[str, Path]:
+    if entry.get("editable") is False:
+        raise RegistryValidationError("ComfyUI text encoders are discovered from shared model folders and cannot be edited here")
     backend = entry["backend"]
     if backend == "yolo":
         return "curated", _REGISTRY_DIR / _YOLO_REGISTRY_FILE
@@ -901,7 +917,7 @@ def get_model_list_for_api() -> List[Dict[str, Any]]:
     # Build the model list payload for the /smartllm-nova/model_list endpoint.
     # Returns a list of dicts with display_name, backend, family, has_vision,
     # and quantizations (if any).
-    registry = {**load_all_registries(), **_load_yolo_registry()}
+    registry = {**load_all_registries(), **_load_yolo_registry(), **get_text_encoder_entries()}
     result = []
     for display_name in sorted(registry.keys()):
         entry = registry[display_name]
@@ -939,7 +955,8 @@ def get_model_list_for_api() -> List[Dict[str, Any]]:
             ),
             "has_vision": entry.get("has_vision", entry["backend"] == "wd14"),
             "origin": entry.get("_registry_origin", "curated"),
-            "editable": True,
+            "editable": entry.get("editable", True),
+            "can_delete": entry.get("can_delete", True),
             "local_status": local_status,
             "can_download": not entry.get("local_only", False),
         }
@@ -965,7 +982,8 @@ def get_model_entry_for_api(display_name: str) -> Optional[Dict[str, Any]]:
         }
     )
     result["origin"] = entry.get("_registry_origin", "curated")
-    result["editable"] = True
+    result["editable"] = entry.get("editable", True)
+    result["can_delete"] = entry.get("can_delete", True)
     result["can_download"] = not entry.get("local_only", False)
     if entry.get("backend") in ("gguf", "llamacpp"):
         result["quantizations"] = get_quantizations(display_name)

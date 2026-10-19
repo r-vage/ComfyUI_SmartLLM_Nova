@@ -454,6 +454,18 @@ def load_model_with_backend(
     #
     # Returns:
     #     Loaded model, processor/tokenizer tuple, and detected ModelType
+    from .backend_comfyui import clear_text_encoder_cache, load_text_encoder
+
+    if loading_method == "ComfyUI":
+        clear_all_model_caches(include_text_encoders=False)
+        stop_all_docker_containers()
+        instance = load_text_encoder(
+            kwargs["text_encoder_entry"], device=kwargs.get("device", "auto"),
+            keep_model_loaded=kwargs.get("keep_model_loaded", False),
+        )
+        return instance, None, ModelType.LLAVA if instance.has_vision else ModelType.LLM
+    clear_text_encoder_cache()
+
     from . import backend_vllm_docker
     from . import florence2_wrapper
 

@@ -549,8 +549,22 @@ def _dispatch_generate(
     data = {}
 
     try:
+        if getattr(instance, "is_comfyui", False):
+            from ..core.sml.backend_comfyui import generate_comfyui
+
+            effective_image = input_image if is_vision else None
+            if effective_image is not None and effective_image.ndim == 4 and frame_count > 0:
+                effective_image = effective_image[-frame_count:]
+            result, raw_output = generate_comfyui(
+                instance, prompt=prompt, image=effective_image, task_name=task_name,
+                llm_mode=llm_mode, system_prompt=system_prompt, use_few_shot=use_few_shot,
+                max_tokens=max_tokens, do_sample=do_sample, temperature=temperature,
+                top_k=top_k, top_p=top_p, min_p=min_p,
+                repetition_penalty=repetition_penalty, seed=seed,
+                stop_sequences=stop_sequences,
+            )
         # ── Docker / OpenAI-compatible backends ──
-        if hasattr(instance, "is_vllm") and instance.is_vllm:
+        elif hasattr(instance, "is_vllm") and instance.is_vllm:
             native = hasattr(instance, "is_vllm_native") and instance.is_vllm_native
             if native:
                 from ..core.sml.backend_vllm_native import generate_vllm
@@ -914,6 +928,7 @@ def _generate_for_family(
             seed=seed,
             repetition_penalty=repetition_penalty,
             model_family="LLM (Text-Only)",
+            do_sample=do_sample,
             task_name=task_name,
             context_size=context_size,
             llm_mode=llm_mode,
@@ -1280,6 +1295,13 @@ def _execute_wd14(
 def _cleanup_model(*, loading_method, keep_model_loaded, model_path, instance):
     # Handle Docker auto-stop and model VRAM cleanup.
 
+    if loading_method == "ComfyUI":
+        if not keep_model_loaded:
+            from ..core.sml.backend_comfyui import release_text_encoder
+
+            release_text_encoder(instance)
+        return
+
     # Docker auto-stop: stop the backing container when Keep Loaded is OFF.
     if not keep_model_loaded:
         if loading_method == "vLLM (Docker)":
@@ -1406,7 +1428,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
             display_name="Smart LM Loader",
             search_aliases=["Smart Model Loader", "SmartLML", "LLM", "VLM"],
             category=CATEGORY.MAIN.value + CATEGORY.LOADER.value,
-            description="Registry-based model loader with unified model dropdown, "
+            description="Registry and native ComfyUI text encoder loader with unified model dropdown, "
             "multi-task chaining, and WD14 tagger support.",
             inputs=[
                 # ── Model selection ───────────────────────────────────
@@ -1420,6 +1442,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                     "• -GGUF - native llama-cpp-python engine\n"
                     "• -llama.cpp - llama.cpp Docker server using the selected GGUF file\n"
                     "• -vLLM / -SGLang / -Ollama - other Docker backends\n"
+                    "• ComfyUI: - compatible local text encoder files, using ComfyUI's native generation\n"
                     "• -WD14 - WD14 tagger for anime-style image tagging.",
                 ),
                 io.Combo.Input(
@@ -2089,13 +2112,16 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
             expected_sha256=entry.get("expected_sha256"),
             tensor_parallel_size=entry.get("tensor_parallel"),
             data_parallel_size=entry.get("data_parallel"),
+            text_encoder_entry=entry if backend == "comfyui" else None,
         )
         cleanup_state["instance"] = model_obj
 
         log.debug(_LOG_PREFIX, f"Model loaded: type={model_type}")
 
         # Build wrapper instance (same pattern as v3)
-        if hasattr(model_obj, "is_vllm") and model_obj.is_vllm:
+        if getattr(model_obj, "is_comfyui", False):
+            instance = model_obj
+        elif hasattr(model_obj, "is_vllm") and model_obj.is_vllm:
             instance = model_obj
             instance.model_type = model_type
         elif hasattr(model_obj, "is_sglang") and model_obj.is_sglang:

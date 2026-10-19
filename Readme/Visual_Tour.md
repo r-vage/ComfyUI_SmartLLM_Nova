@@ -139,7 +139,8 @@ and [Ollama selection example](Registry_Manager.md#choose-an-ollama-runtime) for
 setup diagnostics, action restrictions and a closer look at the controls.
 
 Choose **Settings → SmartLLM Nova → Appearance → Node design** to change the
-palette. Neutral, Jade, Ocean, Amethyst and Amber are included. Users can edit or
+palette. Neutral, Jade, Ocean, Amethyst, Amber and the four Neutral color
+variants are included. Users can edit or
 add [JSON themes](Node_Design.md); theme changes belong only to this repository.
 The compact panel approach is inspired by DaSiWa and updates controls through
 editing and lifecycle events, reducing recurring canvas work.
