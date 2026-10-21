@@ -1,3 +1,15 @@
+## 2026-10-21
+
+### Version: 1.1.1
+
+- **Fix**
+  - Use 0.1 increments for general float controls, retaining finer precision where defaults or bounds require it. Preserve saved values and value ranges.
+  - Keep WD14 tag thresholds at hundredth precision so the default 0.35 and 0.85 values remain valid in numeric controls.
+- **Changed files**
+  - py/RvLoader_SmartDetection.py
+  - py/RvLoader_SmartLMLoader.py
+  - pyproject.toml
+
 ## 2026-10-19
 
 **Version: 1.1.0**

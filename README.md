@@ -19,6 +19,11 @@ identity, acquisition, and trust decisions explicit.
 Version **1.0.0** is the initial Nova release. It includes five panel editors and runs independently of Eclipse.
 
 
+[![ComfyUI tested on 0.38.0](https://img.shields.io/badge/ComfyUI-tested%200.42.1-orange)](https://github.com/comfyanonymous/ComfyUI)
+[![Platform](https://img.shields.io/badge/tested-Linux%20Mint%2022.3-blue)](https://linuxmint.com/)
+[![GPU](https://img.shields.io/badge/tested-RTX%204070%20Ti%20SUPER%20(SM89)-76b900)](https://www.nvidia.com/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green)](LICENSE)
+
 ## Visual tour
 
 Start with the [visual tour](Readme/Visual_Tour.md) for the model/task panel,

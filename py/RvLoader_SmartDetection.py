@@ -771,7 +771,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
                     default=float(defaults.get("confidence", 0.5)),
                     min=0.0,
                     max=1.0,
-                    step=0.01,
+                    step=0.1,
                     tooltip="Minimum confidence score (0.0 to 1.0) required for a detection to be kept. "
                     "Higher values reduce false positives, lower values capture more candidate objects.",
                 ),
@@ -780,7 +780,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
                     default=float(defaults.get("nms_iou_threshold", 0.5)),
                     min=0.0,
                     max=1.0,
-                    step=0.01,
+                    step=0.1,
                     tooltip="Non-Maximum Suppression (NMS) intersection-over-union threshold. "
                     "Lower values (e.g. 0.3) aggressively merge overlapping boxes; higher values (e.g. 0.7) keep separate but close detections.",
                 ),
@@ -789,7 +789,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
                     default=float(defaults.get("detection_filter", 0.8)),
                     min=0.0,
                     max=1.0,
-                    step=0.01,
+                    step=0.1,
                     tooltip="Max ratio of bounding box area to total image area. "
                     "Detections covering more than this ratio (e.g. 0.8) are ignored to filter out useless full-image bounding boxes.",
                 ),

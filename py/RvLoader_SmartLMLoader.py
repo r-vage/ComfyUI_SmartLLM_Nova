@@ -1595,7 +1595,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                     default=float(defaults.get("min_p", 0.0)),
                     min=0.0,
                     max=1.0,
-                    step=0.01,
+                    step=0.1,
                     tooltip="Minimum probability threshold relative to the top token. "
                     "For example, min_p=0.05 filters out any token with less than 5% probability of the most likely token. "
                     "Supported: GGUF, Ollama, vLLM, SGLang, llama.cpp.",
@@ -1612,7 +1612,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                     default=float(defaults.get("mirostat_eta", 0.1)),
                     min=0.0,
                     max=1.0,
-                    step=0.01,
+                    step=0.1,
                     tooltip="Mirostat learning rate (eta). Controls how rapidly the temperature adjusts. Default is 0.1.",
                 ),
                 io.Float.Input(
