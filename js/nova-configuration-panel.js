@@ -27,7 +27,7 @@ export class ConfigurationPanel {
         // Flexible panels use ComfyUI's native height allocation. Content must
         // never turn the allocated height back into a minimum or resize the node.
         if (!profile.fillHeight) {
-            this.widget.computeSize = () => [320, this.height];
+            this.widget.computeSize = () => [this.node.size[0], this.height];
             this.observer = new ResizeObserver(() => this.measure()); this.observer.observe(this.root);
         }
         this.form = new profile.Form(this);
@@ -75,7 +75,7 @@ export class ConfigurationPanel {
             if (height <= 16 || height === this.height) return;
             this.height = height;
             for (const key of ['height', 'min-height', 'max-height']) this.root.style.setProperty(`--comfy-widget-${key}`, `${height}px`);
-            const size = this.node.computeSize(); this.node.setSize([Math.max(320, this.node.size[0]), size[1]]); this.node.setDirtyCanvas(true, true);
+            const width = this.node.size[0], size = this.node.computeSize(); this.node.setSize([width, size[1]]); this.node.setDirtyCanvas(true, true);
         });
     }
     dispose() {

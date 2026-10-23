@@ -1,3 +1,13 @@
+## 2026-10-22
+
+### Version: 1.1.2
+
+- **Fix**
+  - Preserve manually chosen panel widths when expanding or collapsing mode bars and sections, while continuing to fit the controls vertically.
+- **Changed files**
+  - js/nova-configuration-panel.js
+  - pyproject.toml
+
 ## 2026-10-21
 
 ### Version: 1.1.1
