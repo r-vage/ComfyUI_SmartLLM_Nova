@@ -1,3 +1,17 @@
+## 2026-10-23
+
+### Version: 1.1.3
+
+- **Fix**
+  - Keep Florence-2 generation compatible with Transformers 4 and 5. Preserve checkpoint token, beam and repetition defaults, isolate per-request generation overrides and retain the vendored decoder's tuple-cache path.
+  - Restore Florence-2 image resizing, rescaling and normalization with Transformers 5. Prevent rectangular-image detection/captioning failures while preserving detection coordinates in the original image.
+- **Changed files**
+  - core/sml/backend_transformers.py
+  - core/sml/florence2_wrapper.py
+  - extern/florence2/modeling_florence2.py
+  - extern/florence2/processing_florence2.py
+  - pyproject.toml
+
 ## 2026-10-22
 
 ### Version: 1.1.2

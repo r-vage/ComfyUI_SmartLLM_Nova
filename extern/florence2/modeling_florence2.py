@@ -15,6 +15,7 @@
 
 """PyTorch Florence-2 model."""
 
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
@@ -2496,6 +2497,25 @@ class Florence2LanguageForConditionalGeneration(
         # Initialize weights and apply final processing
         if not version.parse(transformers.__version__) >= version.parse("5.0.0"):
             self.post_init()
+
+    @classmethod
+    def _supports_default_dynamic_cache(cls) -> bool:
+        # This vendored BART decoder reads and returns legacy tuple caches.
+        # Newer Transformers otherwise injects an incompatible Cache object.
+        return False
+
+    def generate(self, *args, generation_config=None, **kwargs):
+        if version.parse(transformers.__version__) >= version.parse("5.0.0"):
+            # Keep checkpoint token defaults in GenerationConfig. Newer v5
+            # rejects legacy generation fields on model.config when no explicit
+            # generation config is supplied. Copy per call so UI overrides do
+            # not leak into the next request or mutate a caller's config.
+            generation_config = deepcopy(
+                generation_config if generation_config is not None else self.generation_config
+            )
+            kwargs = generation_config.update(**kwargs)
+        # Leave v4's configuration resolution and from_pretrained path intact.
+        return super().generate(*args, generation_config=generation_config, **kwargs)
 
     def _tie_weights(self):
         if self.config.tie_word_embeddings:

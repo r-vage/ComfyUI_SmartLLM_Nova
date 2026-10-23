@@ -571,16 +571,28 @@ def _load_florence2_v5(
 
     from accelerate import init_empty_weights  # type: ignore
     from accelerate.utils import set_module_tensor_to_device  # type: ignore
+    from transformers import GenerationConfig  # type: ignore
 
     log.msg(_LOG_PREFIX, f"Loading with v5 method (accelerate): {model_path}")
 
     # Load config and set attention mode
-    config = Florence2Config.from_pretrained(model_path)
+    config_data, _ = Florence2Config.get_config_dict(model_path)
+    config = Florence2Config.from_dict(config_data)
     config._attn_implementation = attn_impl
 
     # Create empty model shell
     with init_empty_weights():
         model = Florence2ForConditionalGeneration(config)
+
+    # Recent Transformers removes legacy generation fields from PretrainedConfig.
+    # Preserve the nested language-model defaults used by the v4 loading path,
+    # including forced EOS, beam stopping and repeated-ngram suppression.
+    generation_defaults = model.language_model.generation_config.to_dict()
+    generation_defaults.update({
+        key: value for key, value in config_data.get("text_config", {}).items()
+        if key in generation_defaults
+    })
+    model.language_model.generation_config = GenerationConfig.from_dict(generation_defaults)
 
     tied_keys = _populate_florence_checkpoint(
         model,

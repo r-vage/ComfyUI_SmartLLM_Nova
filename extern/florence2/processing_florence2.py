@@ -280,17 +280,23 @@ class Florence2Processor(ProcessorMixin):
         elif isinstance(text, list) and _is_str_or_image(text[0]):
             pass
 
+        # Transformers 5 treats explicit None as an override, disabling resize
+        # and normalization. Omitted options must retain the trained defaults;
+        # explicit False still allows callers to supply preprocessed pixels.
+        image_kwargs = {
+            "do_resize": do_resize,
+            "do_normalize": do_normalize,
+            "do_rescale": do_rescale,
+            "return_tensors": return_tensors,
+            "image_mean": image_mean,
+            "image_std": image_std,
+            "input_data_format": input_data_format,
+            "data_format": data_format,
+            "resample": resample,
+            "do_convert_rgb": do_convert_rgb,
+        }
         pixel_values = self.image_processor(
-            images,
-            do_resize=do_resize,
-            do_normalize=do_normalize,
-            return_tensors=return_tensors,
-            image_mean=image_mean,
-            image_std=image_std,
-            input_data_format=input_data_format,
-            data_format=data_format,
-            resample=resample,
-            do_convert_rgb=do_convert_rgb,
+            images, **{key: value for key, value in image_kwargs.items() if value is not None}
         )["pixel_values"]
 
         if max_length is not None:

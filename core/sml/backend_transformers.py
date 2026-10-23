@@ -1264,9 +1264,10 @@ def _generate_florence2(
     device = next(base_instance.model.parameters()).device
     dtype = _get_model_dtype(base_instance.model)
 
-    # Process image with do_rescale=False (ComfyUI images are already 0-1)
+    # Conversion produced an 8-bit PIL image. Let Florence apply its trained
+    # resize, 1/255 rescale and normalization before moving pixels to the model.
     inputs = base_instance.processor(
-        text=prompt, images=image_pil, return_tensors="pt", do_rescale=False
+        text=prompt, images=image_pil, return_tensors="pt"
     )
     inputs = {
         k: (
