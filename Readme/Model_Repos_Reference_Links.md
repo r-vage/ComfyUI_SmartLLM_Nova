@@ -48,14 +48,6 @@ Use repo IDs / Ollama model names / GGUF URLs to quickly set up or test SmartLLM
 | Ministral-3-8B-Instruct-2512 | [`mistralai/Ministral-3-8B-Instruct-2512`](https://huggingface.co/mistralai/Ministral-3-8B-Instruct-2512) | 8B | ✅ |
 | Ministral-3-14B-Instruct-2512 | [`mistralai/Ministral-3-14B-Instruct-2512`](https://huggingface.co/mistralai/Ministral-3-14B-Instruct-2512) | 14B | ✅ |
 
-#### Ministral Abliterated (Uncensored)
-
-| Template | Repo ID | Size | Vision |
-|----------|---------|------|--------|
-| Huihui-Ministral-3-3B-Instruct-2512-abliterated | [`huihui-ai/Huihui-Ministral-3-3B-Instruct-2512-abliterated`](https://huggingface.co/huihui-ai/Huihui-Ministral-3-3B-Instruct-2512-abliterated) | 3B | ✅ |
-| Huihui-Ministral-3-3B-Reasoning-2512-abliterated | [`huihui-ai/Huihui-Ministral-3-3B-Reasoning-2512-abliterated`](https://huggingface.co/huihui-ai/Huihui-Ministral-3-3B-Reasoning-2512-abliterated) | 3B | ✅ |
-| Huihui-Ministral-3-8B-Reasoning-2512-abliterated | [`huihui-ai/Huihui-Ministral-3-8B-Reasoning-2512-abliterated`](https://huggingface.co/huihui-ai/Huihui-Ministral-3-8B-Reasoning-2512-abliterated) | 8B | ✅ |
-
 ### LLaVA / Mllama Vision Models
 
 | Template | Repo ID | Size | Vision |

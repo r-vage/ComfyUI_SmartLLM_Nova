@@ -124,26 +124,6 @@ The per-backend files (`transformers_models.json`, `ollama_models.json`, etc.) c
 }
 ```
 
-#### Ministral Abliterated (Uncensored)
-
-```json
-"Huihui-Ministral-3-3B-Instruct-2512-abliterated": {
-    "repo_id": "huihui-ai/Huihui-Ministral-3-3B-Instruct-2512-abliterated",
-    "family": "Mistral",
-    "has_vision": true
-},
-"Huihui-Ministral-3-3B-Reasoning-2512-abliterated": {
-    "repo_id": "huihui-ai/Huihui-Ministral-3-3B-Reasoning-2512-abliterated",
-    "family": "Mistral",
-    "has_vision": true
-},
-"Huihui-Ministral-3-8B-Reasoning-2512-abliterated": {
-    "repo_id": "huihui-ai/Huihui-Ministral-3-8B-Reasoning-2512-abliterated",
-    "family": "Mistral",
-    "has_vision": true
-}
-```
-
 ### LLaVA / Mllama Vision Models
 
 ```json

@@ -59,16 +59,6 @@
     "family": "Mistral",
     "has_vision": true
   },
-  "Huihui-Ministral-3-3B-Instruct-2512-abliterated": {
-    "repo_id": "huihui-ai/Huihui-Ministral-3-3B-Instruct-2512-abliterated",
-    "family": "Mistral",
-    "has_vision": true
-  },
-  "Huihui-Ministral-3-8B-Reasoning-2512-abliterated": {
-    "repo_id": "huihui-ai/Huihui-Ministral-3-8B-Reasoning-2512-abliterated",
-    "family": "Mistral",
-    "has_vision": true
-  },
   "Qwen2.5-VL-3B-Instruct": {
     "repo_id": "Qwen/Qwen2.5-VL-3B-Instruct",
     "family": "Qwen",

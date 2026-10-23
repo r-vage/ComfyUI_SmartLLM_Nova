@@ -1,5 +1,19 @@
 ## 2026-10-23
 
+### Version: 1.1.4
+
+- **Fix**
+  - Remove the unavailable Huihui Ministral 3B Instruct and 8B Reasoning Transformers entries from the bundled model registry after verifying their sources return 404.
+- **Docs**
+  - Remove unavailable Ministral repository links and copy/paste examples from the model references.
+- **Changed files**
+  - .defaults/registry/transformers_models.json.example
+  - Readme/Model_Repos_Reference_CP.md
+  - Readme/Model_Repos_Reference_Links.md
+  - pyproject.toml
+
+## 2026-10-23
+
 ### Version: 1.1.3
 
 - **Fix**
