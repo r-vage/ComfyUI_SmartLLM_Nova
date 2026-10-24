@@ -1,15 +1,21 @@
 """Text generation through ComfyUI's native CLIP/text encoder API."""
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import torch
 
+from .comfy_qwen25 import generation_options
 from .common import clean_model_output
 from .config_templates import get_llm_few_shot_examples
 from .device import resolve_requested_device
 from .logger import log
 from .tasks import get_system_prompt
-from .text_encoders import file_signature, resolve_text_encoder_path
+from .text_encoders import (
+    file_signature,
+    resolve_text_encoder_path,
+    text_encoder_signature,
+)
 
 
 @dataclass
@@ -49,6 +55,19 @@ def load_text_encoder(entry: dict, *, device: str, keep_model_loaded: bool) -> C
     import folder_paths
 
     path = resolve_text_encoder_path(entry["filename"])
+    projector = None
+    signature = file_signature(path)
+    is_gguf = path.suffix.lower() == ".gguf"
+    if is_gguf:
+        from .gguf_text_encoders import inspect_gguf_encoder
+
+        details = inspect_gguf_encoder(path)
+        if details is None:
+            raise ValueError("This GGUF is not a supported complete native text encoder.")
+        entry = {**entry, **details}
+        if details["_projector_path"]:
+            projector = Path(details["_projector_path"])
+        signature = (signature, file_signature(projector) if projector else None)
     load_device = mm.text_encoder_device() if device == "auto" else resolve_requested_device(device)
     # ComfyUI's dynamic patcher needs a concrete GPU index, including in cache identity.
     if load_device.type == "cuda" and load_device.index is None:
@@ -58,22 +77,28 @@ def load_text_encoder(entry: dict, *, device: str, keep_model_loaded: bool) -> C
     # that ComfyUI otherwise loads as a raw Z-Image conditioning encoder.
     clip_type = comfy.sd.CLIPType.FLUX2 if entry["architecture"] == "QWEN3_4B" else comfy.sd.CLIPType.STABLE_DIFFUSION
     embeddings = folder_paths.get_folder_paths("embeddings")
-    key = (file_signature(path), str(load_device), str(offload_device), clip_type.name, tuple(embeddings))
+    key = (signature, str(load_device), str(offload_device), clip_type.name, tuple(embeddings))
     if keep_model_loaded and _cached_encoder is not None and _cached_encoder.cache_key == key:
         return _cached_encoder
     clear_text_encoder_cache()
-    clip = comfy.sd.load_clip(
-        ckpt_paths=[str(path)], embedding_directory=embeddings, clip_type=clip_type,
-        model_options={"load_device": load_device, "offload_device": offload_device},
-    )
+    if is_gguf:
+        from .gguf_text_encoders import load_gguf_clip
+
+        clip = load_gguf_clip(path, projector, clip_type=clip_type, embeddings=embeddings,
+                              load_device=load_device, offload_device=offload_device, architecture=entry["architecture"])
+    else:
+        clip = comfy.sd.load_clip(
+            ckpt_paths=[str(path)], embedding_directory=embeddings, clip_type=clip_type,
+            model_options=generation_options(entry["architecture"], {"load_device": load_device, "offload_device": offload_device}),
+        )
     instance = ComfyTextEncoder(clip, entry["architecture"], entry["has_vision"], key)
     try:
         if device != "auto" and clip.patcher.load_device != load_device:
             raise RuntimeError("ComfyUI cannot run this text encoder on the requested device.")
         if not callable(getattr(clip.cond_stage_model, "generate", None)):
             raise TypeError("This text encoder does not support ComfyUI text generation.")
-        if file_signature(path) != key[0]:
-            raise RuntimeError("Text encoder changed while loading; run the node again.")
+        if text_encoder_signature(path) != key[0]:
+            raise RuntimeError("Text encoder or its projector changed while loading; run the node again.")
     except BaseException:
         try:
             release_text_encoder(instance)

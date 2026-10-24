@@ -115,7 +115,10 @@ export class PanelForm {
         actions.append(registry);
         if (this.model === this.params[this.modelKey] && this.entry?.can_delete !== false) actions.append(remove);
         actions.append(refresh); parent.append(actions);
-        if (this.entry?.backend === 'comfyui') parent.append(element('div', 'sln-panel-note', 'Local ComfyUI text encoder. File precision and memory management follow ComfyUI. Add files to models/text_encoders, then refresh the model list.'));
+        if (this.entry?.backend === 'comfyui') {
+            parent.append(element('div', 'sln-panel-note', 'Local ComfyUI text encoder. File precision and memory management follow ComfyUI. Add files to models/text_encoders, then refresh the model list.'));
+            if (this.entry.projector_note) parent.append(element('div', 'sln-panel-note', this.entry.projector_note));
+        }
     }
     sampling(parent, florence, backend, textOnly) {
         const rows = [ ...(!florence ? [['temperature', 'top_p', 'top_k'], 'repetition_penalty'] : []), ...(backend === 'comfyui' ? ['do_sample'] : !textOnly ? [['num_beams', 'do_sample']] : []) ];

@@ -156,14 +156,14 @@ class SmartLLMPanel:
         if cls.PANEL_KIND == "loader":
             from .text_encoders import (
                 DISPLAY_PREFIX,
-                file_signature,
                 resolve_text_encoder_path,
+                text_encoder_signature,
             )
 
             model = config["parameters"]["model"]
             if model.startswith(DISPLAY_PREFIX):
                 path = resolve_text_encoder_path(model[len(DISPLAY_PREFIX):])
-                return (configuration, file_signature(path))
+                return (configuration, text_encoder_signature(path))
         return configuration
 
     @classmethod

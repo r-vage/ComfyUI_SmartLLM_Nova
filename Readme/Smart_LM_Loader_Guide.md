@@ -286,13 +286,29 @@ The model family is **auto-detected from the registry entry**. Each model in the
 
 ### ComfyUI text encoders
 
-This additional backend reuses local encoder files through the same `comfy.sd.load_clip()` and `tokenize → generate → decode` APIs used by ComfyUI's **Load CLIP** and **Generate Text** nodes. Existing Transformers, GGUF, Docker and tagging backends remain available.
+This additional backend reuses local encoder files through the native loading and `tokenize → generate → decode` APIs used by ComfyUI's **Load CLIP** and **Generate Text** nodes. Existing Transformers, GGUF, Docker and tagging backends remain available.
 
-1. Place a compatible `.safetensors` or `.sft` file in ComfyUI's `models/text_encoders` folder. Configured extra text encoder folders and subfolders are included too.
-2. Open the loader's **Model** selector and choose a `ComfyUI: filename` entry under **ComfyUI text encoders**. Opening the selector refreshes the available files.
+1. Place a compatible `.safetensors`, `.sft` or `.gguf` file in ComfyUI's `models/text_encoders` folder. Configured extra text encoder folders and subfolders are included too.
+2. Open the loader's **Model** selector and choose a `ComfyUI: filename` entry under **ComfyUI vision encoders** or **ComfyUI text-only encoders**. Opening the selector refreshes the available files.
 3. Choose a task, enter a prompt and run the node. Connect images when the selected file includes supported vision weights.
 
-Discovery reads checkpoint headers, not model weights or filename guesses. Supported native generation families include Gemma 2/3/4, Qwen3, Qwen3.5, Qwen3-VL and Qwen2.5-VL 7B where supported by the installed ComfyUI. Ordinary CLIP/T5 encoders, truncated diffusion encoders, music vocabularies, missing Gemma tokenizers and Qwen checkpoints missing a required output head are excluded. A text encoder used for diffusion conditioning is not necessarily a complete language generator. Files are reused in place; no model download, conversion or registry registration is needed.
+Discovery reads checkpoint headers, not model weights or filename guesses. ComfyUI identifies the architecture from tensor names and shapes; Nova checks for supported vision-weight prefixes (`vision_model.`, `visual.`, `model.visual.`). Vision entries can use image inputs as well as text. Text-only entries expose text tasks. A `VL` filename is not sufficient: a text-only conversion of a vision model belongs in the text-only group when it is a supported native generator. Header inspection is cached until the file changes; it does not load the model onto the GPU.
+
+Supported native generation families include Gemma 2/3/4, Qwen3, Qwen3.5, Qwen3-VL and Qwen2.5-VL 7B where supported by the installed ComfyUI. Ordinary CLIP/T5 encoders, truncated diffusion encoders, music vocabularies, missing Gemma tokenizers and Qwen checkpoints missing a required output head are excluded. A text encoder used for diffusion conditioning is not necessarily a complete language generator. Files are reused in place; no model download, conversion or registry registration is needed.
+
+**GGUF files in `text_encoders`.** SmartLLM bundles its own ComfyUI-GGUF adapter; Smart Model Loader and a separate GGUF node pack are not required. Supported layouts are Qwen3 0.6B/4B/8B, Qwen2.5-VL 7B, Qwen3-VL 4B/8B and Gemma3 4B/12B, subject to the installed ComfyUI generation API. This does not add every llama.cpp architecture to the native backend. T5/UMT5, projector-only files, unsupported layouts and incomplete models stay out of the list.
+
+For GGUF vision, copy **that model's own matching mmproj** into the **same subfolder** as its encoder. The base filenames must match after removing the quantization suffix and `mmproj` marker. For example:
+
+```text
+models/text_encoders/
+  Qwen2.5-VL-7B-Abliterated-Caption-it.Q4_K_S.gguf
+  Qwen2.5-VL-7B-Abliterated-Caption-it.mmproj-Q8_0.gguf
+```
+
+Nova also checks the projector architecture, dimensions and tensor inventory. A projector is not interchangeable merely because it has the same size or contains `VL` in its name. Generic names such as `mmproj-model-f16.gguf` need an unambiguous matching base filename; only rename a projector after verifying it belongs to that model. If multiple projectors match, keep one matching companion beside the encoder. Missing, mismatched or ambiguous projectors leave the encoder in the text-only group. The Model section shows the selected projector or explains why vision is unavailable. The `LLM` folder is not searched for companions.
+
+Opening the Model selector refreshes discovery. Copying, replacing or deleting a companion also invalidates the native model and workflow cache on the next run. Quantized transformer layers remain quantized; token embeddings and Qwen2.5's direct output projection are expanded for native generation, so runtime memory can exceed the GGUF file size. Shared encoder/projector files remain read-only to SmartLLM.
 
 **Device** selects ComfyUI's native automatic policy or the requested CPU/CUDA/MPS device. Checkpoint precision, attention and memory offloading follow ComfyUI. **Keep loaded** reuses the encoder while the file and loading settings match. Turning it off releases Nova's encoder after execution, including errors. ComfyUI can still offload cached weights to manage memory.
 

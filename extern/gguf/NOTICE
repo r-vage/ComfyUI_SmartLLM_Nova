@@ -1,0 +1,12 @@
+ComfyUI-GGUF integration
+Copyright (c) City96
+https://github.com/city96/ComfyUI-GGUF
+Licensed under the Apache License, Version 2.0.
+
+The GGUF operations, dequantization, tensor remapping, tokenizer reconstruction
+and patcher in extern/gguf derive from ComfyUI-GGUF, copied from the vendored
+adapter in ComfyUI_SmartModelLoader_Nova (837a9f085fb7103ec036c4822397b2506328735b).
+Original source notices are retained. SmartLLM Nova modifies the adapter for
+native text generation: no node/folder registration or diffusion loaders,
+explicit projector selection, Gemma3 vision mapping, output-head handling,
+local logging and exception-safe patcher cloning. This is an independent copy.

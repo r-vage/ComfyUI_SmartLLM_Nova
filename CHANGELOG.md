@@ -1,3 +1,27 @@
+## 2026-10-24
+
+### Version: 1.1.5
+
+- **Feat**
+  - Load supported GGUF language encoders directly from ComfyUI text_encoders using a bundled adapter, with validated same-folder vision projectors, read-only model groups and projector-aware cache invalidation.
+  - Separate native ComfyUI encoders into vision and text-only model groups using checkpoint contents rather than filenames, retaining sorted selections and capability-based tasks.
+- **Fix**
+  - Preserve Qwen2.5-VL generation output heads, stop tokens and image positions through the native backend; exclude incomplete 7B checkpoints without an output head.
+- **Changed files**
+  - Readme/Smart_LM_Loader_Guide.md
+  - core/sml/backend_comfyui.py
+  - core/sml/comfy_qwen25.py
+  - core/sml/gguf_metadata.py
+  - core/sml/gguf_text_encoders.py
+  - core/sml/model_registry.py
+  - core/sml/panel_configuration.py
+  - core/sml/text_encoders.py
+  - extern/gguf/
+  - js/nova-panel-controls.js
+  - js/nova-panel-form.js
+  - pyproject.toml
+  - requirements.txt
+
 ## 2026-10-23
 
 ### Version: 1.1.4

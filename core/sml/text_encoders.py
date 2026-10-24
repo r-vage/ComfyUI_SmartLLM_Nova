@@ -1,12 +1,14 @@
 """Read-only discovery of ComfyUI language-model text encoder checkpoints."""
 
+import os
 from functools import lru_cache
 from pathlib import Path
 from types import SimpleNamespace
 
 BACKEND = "comfyui"
 DISPLAY_PREFIX = "ComfyUI: "
-MODEL_SEPARATOR = "__SEP__TEXT_ENCODERS__"
+MODEL_SEPARATOR_TEXT = "__SEP__TEXT_ENCODERS__"
+MODEL_SEPARATOR_VISION = "__SEP__VISION_ENCODERS__"
 
 # ComfyUI's detector remains the architecture authority. These are the native
 # generation implementations, not CLIP/T5 or truncated diffusion-only encoders.
@@ -17,7 +19,7 @@ _GENERATIVE_TYPES = {
     "QWEN35_08B", "QWEN35_2B", "QWEN35_4B", "QWEN35_9B", "QWEN35_27B",
     "QWEN3VL_4B", "QWEN3VL_8B",
 }
-_UNTIED_TYPES = {"QWEN3_8B", "QWEN3VL_8B", "QWEN35_9B", "QWEN35_27B"}
+_UNTIED_TYPES = {"QWEN25_7B", "QWEN3_8B", "QWEN3VL_8B", "QWEN35_9B", "QWEN35_27B"}
 
 
 def file_signature(path: Path) -> tuple:
@@ -33,9 +35,10 @@ def resolve_text_encoder_path(filename: str) -> Path:
             or any(part in {"", ".", ".."} for part in filename.replace("\\", "/").split("/"))
             or Path(filename).is_absolute()):
         raise ValueError("Choose a text encoder from ComfyUI's text_encoders list.")
-    if Path(filename).suffix.lower() not in {".safetensors", ".sft"}:
-        raise ValueError("Native text generation requires a supported safetensors text encoder.")
-    if filename not in folder_paths.get_filename_list("text_encoders"):
+    suffix = Path(filename).suffix.lower()
+    if suffix not in {".safetensors", ".sft", ".gguf"}:
+        raise ValueError("Native text generation requires a supported safetensors or GGUF text encoder.")
+    if suffix != ".gguf" and filename not in folder_paths.get_filename_list("text_encoders"):
         raise FileNotFoundError(f"Text encoder is no longer available: {filename}")
     full_path = folder_paths.get_full_path("text_encoders", filename)
     if full_path is None:
@@ -45,6 +48,30 @@ def resolve_text_encoder_path(filename: str) -> Path:
     if not any(path.is_relative_to(root) for root in roots) or not path.is_file():
         raise ValueError("Text encoder must remain inside a configured text_encoders folder.")
     return path
+
+
+def text_encoder_signature(path: Path) -> tuple:
+    signature = file_signature(path)
+    if path.suffix.lower() != ".gguf":
+        return signature
+    from .gguf_text_encoders import inspect_gguf_encoder
+
+    info = inspect_gguf_encoder(path)
+    projector = info.get("_projector_path") if info else None
+    return signature, file_signature(Path(projector)) if projector else None
+
+
+def _gguf_filenames() -> set[str]:
+    """Read shared encoder roots without changing ComfyUI's global filters."""
+    import folder_paths
+
+    result = set()
+    for root in folder_paths.get_folder_paths("text_encoders"):
+        for directory, _, files in os.walk(root, followlinks=False):
+            for filename in files:
+                if Path(filename).suffix.lower() == ".gguf":
+                    result.add(str((Path(directory) / filename).relative_to(root)))
+    return result
 
 
 @lru_cache(maxsize=256)
@@ -83,11 +110,22 @@ def _inspect_checkpoint(signature: tuple) -> tuple[str, bool] | None:
 
 def _entry(filename: str) -> dict | None:
     path = resolve_text_encoder_path(filename)
-    inspected = _inspect_checkpoint(file_signature(path))
-    if inspected is None:
-        return None
-    architecture, has_vision = inspected
+    details = {}
+    if path.suffix.lower() == ".gguf":
+        from .gguf_text_encoders import inspect_gguf_encoder
+
+        inspected = inspect_gguf_encoder(path)
+        if inspected is None:
+            return None
+        details = {key: value for key, value in inspected.items() if not key.startswith("_")}
+        architecture, has_vision = details["architecture"], details["has_vision"]
+    else:
+        inspected = _inspect_checkpoint(file_signature(path))
+        if inspected is None:
+            return None
+        architecture, has_vision = inspected
     return {
+        **details,
         "backend": BACKEND, "name": filename, "filename": filename,
         "family": "VLM" if has_vision else "LLM_TEXT", "has_vision": has_vision,
         "architecture": architecture, "local_only": True,
@@ -118,8 +156,9 @@ def get_text_encoder_entries() -> dict[str, dict]:
     from safetensors import SafetensorError
 
     entries = {}
-    for filename in folder_paths.get_filename_list("text_encoders"):
-        if Path(filename).suffix.lower() not in {".safetensors", ".sft"}:
+    filenames = set(folder_paths.get_filename_list("text_encoders")) | _gguf_filenames()
+    for filename in sorted(filenames):
+        if Path(filename).suffix.lower() not in {".safetensors", ".sft", ".gguf"}:
             continue
         try:
             entry = _entry(filename)

@@ -29,7 +29,8 @@ from .logger import log
 from .model_types import ModelFamily
 from .text_encoders import (
     DISPLAY_PREFIX,
-    MODEL_SEPARATOR,
+    MODEL_SEPARATOR_TEXT,
+    MODEL_SEPARATOR_VISION,
     get_text_encoder_entries,
     get_text_encoder_entry,
 )
@@ -196,12 +197,15 @@ def load_all_registries(force: bool = False) -> Dict[str, Dict[str, Any]]:
 MODEL_SEP_VISION = "__SEP__VISION_MODELS__"
 MODEL_SEP_TEXT = "__SEP__TEXT_MODELS__"
 MODEL_SEP_WD14 = "__SEP__WD14_MODELS__"
-_MODEL_SEPARATORS = {MODEL_SEP_VISION, MODEL_SEP_TEXT, MODEL_SEP_WD14, MODEL_SEPARATOR}
+_MODEL_SEPARATORS = {
+    MODEL_SEP_VISION, MODEL_SEP_TEXT, MODEL_SEP_WD14,
+    MODEL_SEPARATOR_VISION, MODEL_SEPARATOR_TEXT,
+}
 
 
 def get_model_list() -> List[str]:
     # Get model display names grouped by type with separator tokens.
-    # Order: Vision models → Text models → WD14 models
+    # Registered vision/text/WD14, then native vision/text-only encoders.
     registry = load_all_registries()
     vision: List[str] = []
     text: List[str] = []
@@ -224,9 +228,12 @@ def get_model_list() -> List[str]:
         result.append(MODEL_SEP_WD14)
         result.extend(sorted(wd14))
     text_encoders = get_text_encoder_entries()
-    if text_encoders:
-        result.append(MODEL_SEPARATOR)
-        result.extend(sorted(text_encoders))
+    for has_vision, separator in ((True, MODEL_SEPARATOR_VISION), (False, MODEL_SEPARATOR_TEXT)):
+        names = sorted(name for name, entry in text_encoders.items()
+                       if entry["has_vision"] == has_vision)
+        if names:
+            result.append(separator)
+            result.extend(names)
     return result
 
 

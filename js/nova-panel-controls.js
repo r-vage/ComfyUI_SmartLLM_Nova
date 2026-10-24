@@ -13,7 +13,10 @@ export function button(text, title, action) {
 }
 
 const MODEL_GROUPS = {
-    loader: { __SEP__VISION_MODELS__: 'Vision models', __SEP__TEXT_MODELS__: 'Text models', __SEP__WD14_MODELS__: 'WD14 models', __SEP__TEXT_ENCODERS__: 'ComfyUI text encoders' },
+    loader: {
+        __SEP__VISION_MODELS__: 'Vision models', __SEP__TEXT_MODELS__: 'Text models', __SEP__WD14_MODELS__: 'WD14 models',
+        __SEP__VISION_ENCODERS__: 'ComfyUI vision encoders', __SEP__TEXT_ENCODERS__: 'ComfyUI text-only encoders',
+    },
     detection: { __SEP__DETECTION_VLM__: 'VLM models', __SEP__YOLO__: 'YOLO models' },
 };
 
@@ -30,7 +33,8 @@ export function groupedModelOptions(values, kind) {
         } else if (value?.display_name) {
             if (kind === 'loader' && value.backend === 'yolo') continue;
             const key = kind === 'detection' ? (value.backend === 'yolo' ? '__SEP__YOLO__' : '__SEP__DETECTION_VLM__')
-                : value.backend === 'comfyui' ? '__SEP__TEXT_ENCODERS__' : value.backend === 'wd14' ? '__SEP__WD14_MODELS__' : value.has_vision ? '__SEP__VISION_MODELS__' : '__SEP__TEXT_MODELS__';
+                : value.backend === 'comfyui' ? (value.has_vision ? '__SEP__VISION_ENCODERS__' : '__SEP__TEXT_ENCODERS__')
+                    : value.backend === 'wd14' ? '__SEP__WD14_MODELS__' : value.has_vision ? '__SEP__VISION_MODELS__' : '__SEP__TEXT_MODELS__';
             groups.get(key).push(value.display_name);
         }
     }
