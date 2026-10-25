@@ -1,3 +1,13 @@
+## 2026-10-25
+
+### Version: 1.1.6
+
+- **Fix**
+  - Show missing-image warnings only for tasks that require an image, allowing text tasks and optional-image tasks such as Direct Chat to run on vision models without a misleading toast.
+- **Changed files**
+  - py/RvLoader_SmartLMLoader.py
+  - pyproject.toml
+
 ## 2026-10-24
 
 ### Version: 1.1.5

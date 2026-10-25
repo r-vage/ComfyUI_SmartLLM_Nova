@@ -2206,6 +2206,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
         generation_frame_count = _generation_frame_count(
             task, frame_count, h3_image_count
         )
+        task_definition = TASK_BY_NAME.get(task)
 
         results = []
         output_images = []
@@ -2225,8 +2226,16 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                 input_image = None
                 if single_img is not None and model_has_vision:
                     input_image = single_img
-                elif model_has_vision and single_img is None:
-                    log.warning(_LOG_PREFIX, "No image provided for vision model", notify=True)
+                elif (
+                    model_has_vision
+                    and task_definition is not None
+                    and task_definition.needs_image
+                ):
+                    log.warning(
+                        _LOG_PREFIX,
+                        f"No image provided for vision task '{task}'",
+                        notify=True,
+                    )
 
                 # ── Generate (with system-prompt override if connected) ───
                 _override_token = push_system_prompt_override(system_prompt)
