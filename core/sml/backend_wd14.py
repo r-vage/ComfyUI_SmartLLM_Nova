@@ -158,14 +158,12 @@ def _resolve_ort_provider_plan(
     requested_device: str,
 ) -> tuple[list[str], str, str | None]:
     # Translate the node device into an explicit ONNX Runtime provider order.
-    device = requested_device.strip().lower()
-    if device not in {"auto", "cuda", "cpu", "mps"}:
-        raise ValueError(f"Unsupported WD14 device: {requested_device!r}")
-    if device == "mps":
-        raise RuntimeError(
-            "WD14 does not currently provide an ONNX Runtime MPS/CoreML backend. "
-            "Select CPU, CUDA, or auto."
-        )
+    import torch
+
+    from .device import resolve_requested_device
+
+    target = resolve_requested_device(requested_device)
+    device = 'cuda' if target.type == 'cuda' and not torch.version.hip else 'cpu'
 
     available = ort.get_available_providers()
     if "CPUExecutionProvider" not in available:
@@ -253,7 +251,9 @@ def load_wd14_model(
     import onnxruntime as ort  # type: ignore
 
     providers, runtime_fingerprint, _ = _resolve_ort_provider_plan(ort, device)
-    normalized_device = device.strip().lower()
+    from .device import resolve_requested_device
+    target = resolve_requested_device(device)
+    normalized_device = str(target)
     cache_identity = (
         model_name,
         normalized_device,
@@ -280,7 +280,12 @@ def load_wd14_model(
 
     log.msg(_LOG_PREFIX, f"Loading WD14 model: {model_name}")
     try:
-        session = ort.InferenceSession(str(onnx_path), providers=providers)
+        provider_options = [{} for _ in providers]
+        if providers[0] == 'CUDAExecutionProvider':
+            import comfy.model_management as mm
+            mm.free_memory(1024**3, target)
+            provider_options[0] = {'device_id': target.index or 0}
+        session = ort.InferenceSession(str(onnx_path), providers=providers, provider_options=provider_options)
     except Exception as e:
         classification = _classify_provider_error(e)
         attempted_cuda = providers[0] == "CUDAExecutionProvider"

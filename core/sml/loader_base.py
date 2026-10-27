@@ -299,9 +299,9 @@ from .common import cleanup_memory_before_load
 from .device import (
     auto_select_attention,
     auto_select_quantization,
-    get_device_info,
     LLAMA_CPP_AVAILABLE,
     resolve_requested_device,
+    require_gguf_vision_device,
 )
 
 # Model caches (moved to model_cache.py)
@@ -349,8 +349,9 @@ def _cached_florence_matches_request(
     if not all((cached_device, cached_quantization, cached_attention)):
         return False
 
-    if requested_device == "auto":
-        device_matches = cached_device in {"cpu", "cuda"}
+    if requested_device in ('auto', 'default'):
+        target_device = str(resolve_requested_device(requested_device))
+        device_matches = cached_device in {target_device, 'cpu'}
     else:
         target_device = str(resolve_requested_device(requested_device))
         device_matches = cached_device == target_device
@@ -386,7 +387,6 @@ def _cached_vlm_matches_request(
     ):
         return False
 
-    cached_requested_device = getattr(model, "_smartllm_requested_device", None)
     cached_requested_quantization = getattr(
         model, "_smartllm_requested_quantization", None
     )
@@ -394,10 +394,8 @@ def _cached_vlm_matches_request(
     requested_device = (requested_device or "auto").lower()
     requested_quantization = (requested_quantization or "auto").lower()
     requested_attention = requested_attention or "auto"
-    device_matches = requested_device == "auto" or requested_device in {
-        cached_device,
-        cached_requested_device,
-    }
+    target_device = str(resolve_requested_device(requested_device))
+    device_matches = cached_device == target_device or (requested_device in ('auto', 'default') and cached_device == 'cpu')
     quantization_matches = requested_quantization == "auto" or (
         requested_quantization
         in {cached_quantization, cached_requested_quantization}
@@ -464,6 +462,9 @@ def load_model_with_backend(
             keep_model_loaded=kwargs.get("keep_model_loaded", False),
         )
         return instance, None, ModelType.LLAVA if instance.has_vision else ModelType.LLM
+    if (loading_method in ('vLLM (Docker)', 'vLLM (Native)', 'SGLang (Docker)', 'Ollama (Docker)', 'llama.cpp (Docker)')
+            and resolve_requested_device(kwargs.get('device', 'default')).type == 'cpu'):
+        raise ValueError(f'{loading_method} manages its own accelerator and does not support the node CPU setting. Use a local Transformers, ComfyUI or text-only GGUF backend for CPU processing.')
     clear_text_encoder_cache()
 
     from . import backend_vllm_docker
@@ -513,10 +514,10 @@ def load_model_with_backend(
             and detected_family.value in generic_vlm_families
         )
     )
-    if kwargs.get("device") == "auto" and not (
+    if kwargs.get('device', 'default') in ('auto', 'default') and not (
         is_florence_transformers or is_generic_vlm_transformers
     ):
-        automatic_device = get_device_info()["recommended_device"]
+        automatic_device = str(resolve_requested_device(kwargs.get('device', 'default')))
         kwargs["device"] = automatic_device
         log.msg(
             _LOG_PREFIX,
@@ -536,7 +537,7 @@ def load_model_with_backend(
         else:
             # Resolve attention mode
             if attention_mode == "auto":
-                resolved_attention = auto_select_attention()
+                resolved_attention = auto_select_attention(resolve_requested_device(kwargs.get('device', 'default')))
             else:
                 resolved_attention = attention_mode
 
@@ -546,7 +547,10 @@ def load_model_with_backend(
                 resolved_quantization = auto_select_quantization(
                     model_name=Path(model_path).name,
                     estimated_size_gb=model_size_gb,
+                    target_device=resolve_requested_device(kwargs.get('device', 'default')),
                 )
+                if resolve_requested_device(kwargs.get('device', 'default')).type == 'cpu':
+                    resolved_quantization = 'fp32'
             else:
                 resolved_quantization = quantization
     else:
@@ -687,6 +691,14 @@ def load_model_with_backend(
     # When keep_model_loaded=True, check if the SAME or DIFFERENT model is cached
     # within the same backend. Reuse if same, evict if different.
     # ============================================================================
+    def reserve_model_memory():
+        if not memory_cleanup:
+            return
+        import comfy.model_management as mm
+        target_device = resolve_requested_device(kwargs.get('device', 'default'))
+        if target_device.type != 'cpu':
+            mm.free_memory(int((calculate_model_size(Path(model_path)) * 1.3 + 1) * 1024**3), target_device)
+
     if is_florence_transformers:
         current_florence_key = get_cached_model_key()
         if current_florence_key:
@@ -767,6 +779,8 @@ def load_model_with_backend(
             )
             clear_all_model_caches()
 
+    if is_florence_transformers or is_generic_vlm_transformers:
+        reserve_model_memory()
     if is_florence_transformers:
         florence_plan = florence2_wrapper.resolve_florence_load_plan(
             requested_device=kwargs.get("device", "cuda"),
@@ -817,6 +831,7 @@ def load_model_with_backend(
                     model_path,
                     resolved_quantization,
                     resolved_attention,
+                    device=str(resolve_requested_device(kwargs.get('device', 'default'))),
                     provenance=provenance_cache_token,
                 )
             ]
@@ -862,6 +877,9 @@ def load_model_with_backend(
     elif loading_method == "vLLM (Native)":
         # vLLM native also needs cache check - handled internally by _clear_vllm_cache_if_different
         pass
+
+    if not (is_florence_transformers or is_generic_vlm_transformers) and loading_method != 'GGUF (llama-cpp-python)':
+        reserve_model_memory()
 
     # Parse enums
     try:
@@ -1061,12 +1079,12 @@ def load_model_with_backend(
             raise FileNotFoundError(f"GGUF model file not found: {model_file}")
 
         context_size = kwargs.get("context_size", 32768)
-        device = kwargs.get("device", "cuda")
+        device = resolve_requested_device(kwargs.get('device', 'default'))
         keep_model_loaded = kwargs.get("keep_model_loaded", False)
         n_batch = kwargs.get("n_batch", 512)
 
         # Determine GPU layers (-1 = full offload for CUDA)
-        n_gpu_layers = -1 if device == "cuda" else 0
+        n_gpu_layers = -1 if device.type != 'cpu' else 0
 
         # ============================================================================
         # GGUF Model Cache Check (Native llama-cpp-python ONLY)
@@ -1076,7 +1094,7 @@ def load_model_with_backend(
         # methods and manage model lifecycle via container lifecycle instead.
         # With proper KV cache clearing between calls, GGUF models can be safely reused.
         # ============================================================================
-        gguf_cache_key = get_gguf_cache_key(str(model_file), context_size)
+        gguf_cache_key = get_gguf_cache_key(str(model_file), context_size) + f':device={device}'
         current_gguf_cached_key = get_cached_gguf_model_key()
 
         if current_gguf_cached_key and current_gguf_cached_key != gguf_cache_key:
@@ -1108,6 +1126,7 @@ def load_model_with_backend(
                     )
                 return model, None, model_type
 
+        reserve_model_memory()
         # GGUF models use llama-cpp-python
         if family == ModelFamily.QWEN:
             # Qwen VL with vision support
@@ -1121,6 +1140,7 @@ def load_model_with_backend(
 
             if mmproj_file:
                 # Vision model with mmproj
+                require_gguf_vision_device(device)
                 log.msg(_LOG_PREFIX, "Loading Qwen VL GGUF (vision)")
 
                 # Detect Qwen version for appropriate chat handler
@@ -1153,6 +1173,7 @@ def load_model_with_backend(
                     chat_handler=chat_handler,
                     n_ctx=context_size,
                     n_gpu_layers=n_gpu_layers,
+                    main_gpu=device.index or 0, split_mode=0,
                     n_batch=n_batch,
                     verbose=False,
                 )
@@ -1172,6 +1193,7 @@ def load_model_with_backend(
                     model_path=str(model_file),
                     n_ctx=context_size,
                     n_gpu_layers=n_gpu_layers,
+                    main_gpu=device.index or 0, split_mode=0,
                     n_batch=n_batch,
                     verbose=False,
                 )
@@ -1190,6 +1212,7 @@ def load_model_with_backend(
             )
 
             if mmproj_file:
+                require_gguf_vision_device(device)
                 # Vision model with mmproj (e.g., Ministral with Pixtral vision)
                 log.msg(
                     _LOG_PREFIX, f"Loading Mistral VL GGUF (vision): {model_file.name}"
@@ -1206,6 +1229,7 @@ def load_model_with_backend(
                         chat_handler=chat_handler,
                         n_ctx=context_size,
                         n_gpu_layers=n_gpu_layers,
+                        main_gpu=device.index or 0, split_mode=0,
                         n_batch=n_batch,
                         verbose=False,
                     )
@@ -1241,6 +1265,7 @@ def load_model_with_backend(
                     model_path=str(model_file),
                     n_ctx=context_size,
                     n_gpu_layers=n_gpu_layers,
+                    main_gpu=device.index or 0, split_mode=0,
                     n_batch=n_batch,
                     verbose=False,
                 )
@@ -1275,6 +1300,7 @@ def load_model_with_backend(
                     f"LLaVA requires an mmproj file for vision support. "
                     f"Please provide mmproj_url in the template or place the mmproj file in the model folder."
                 )
+            require_gguf_vision_device(device)
 
             log.msg(_LOG_PREFIX, f"Loading LLaVA GGUF (vision): {model_file.name}")
             log.msg(_LOG_PREFIX, f"  mmproj: {Path(mmproj_file).name}")
@@ -1289,6 +1315,7 @@ def load_model_with_backend(
                     chat_handler=chat_handler,
                     n_ctx=context_size,
                     n_gpu_layers=n_gpu_layers,
+                    main_gpu=device.index or 0, split_mode=0,
                     n_batch=n_batch,
                     verbose=False,
                 )
@@ -1770,7 +1797,7 @@ def load_model_with_backend(
 
             # Build common kwargs
             load_kwargs: dict[str, Any] = {
-                "device_map": "auto",
+                "device_map": {'': str(resolve_requested_device(device))},
                 "trust_remote_code": False,
             }
             if attn_impl:
@@ -1806,6 +1833,7 @@ def load_model_with_backend(
             tokenizer = AutoTokenizer.from_pretrained(
                 model_path, trust_remote_code=False
             )
+            model._smartllm_effective_device = str(resolve_requested_device(device))
 
             # Apply torch.compile if requested (non-quantized only)
             use_torch_compile = kwargs.get("use_torch_compile", False)
@@ -1831,6 +1859,7 @@ def load_model_with_backend(
                     model_path,
                     resolved_quantization,
                     resolved_attention,
+                    device=str(resolve_requested_device(device)),
                     provenance=provenance_cache_token,
                 )
                 set_cached_transformers_model(

@@ -21,6 +21,15 @@ from .logger import log
 _LOG_PREFIX = "Device"
 
 
+def normalize_device_selection(value):
+    # Saved Nova workflows used vendor names for automatic acceleration.
+    if value in ('auto', 'cuda', 'mps', 'gpu', ''):
+        return 'default'
+    if value not in ('default', 'cpu'):
+        raise ValueError('Device must be Default or CPU.')
+    return value
+
+
 # ============================================================================
 # llama-cpp-python Availability Check
 # ============================================================================
@@ -293,14 +302,12 @@ def get_device_info(
     device_type = "cpu"
     recommended_device = "cpu"
 
-    requested = torch.device(target_device) if target_device is not None else None
-    cuda_index = (
-        requested.index or 0
-        if requested is not None and requested.type == "cuda"
-        else 0
-    )
+    requested = resolve_requested_device(target_device if target_device is not None else 'default')
+    cuda_index = requested.index
 
-    if torch.cuda.is_available():
+    if requested.type == 'cuda':
+        if cuda_index is None:
+            cuda_index = torch.cuda.current_device()
         props = torch.cuda.get_device_properties(cuda_index)
         total = props.total_memory / (1024**3)
 
@@ -322,15 +329,13 @@ def get_device_info(
             "free_memory": free_memory,
         }
         device_type = "cuda"
-        recommended_device = "cuda"
-    elif (
-        hasattr(torch.backends, "mps")
-        and hasattr(torch.backends.mps, "is_available")
-        and torch.backends.mps.is_available()
-    ):
-        device_type = "mps"
-        recommended_device = "mps"
-        gpu_info = {"available": True, "total_memory": 0, "free_memory": 0}
+        recommended_device = str(requested)
+    elif requested.type != 'cpu':
+        import comfy.model_management as mm
+        device_type = requested.type
+        recommended_device = str(requested)
+        gpu_info = {'available': True, 'total_memory': mm.get_total_memory(requested) / 1024**3,
+                    'free_memory': mm.get_free_memory(requested) / 1024**3}
 
     sys_mem = psutil.virtual_memory()
     return {
@@ -344,8 +349,8 @@ def get_device_info(
         "device": recommended_device,
         "device_name": (
             torch.cuda.get_device_name(cuda_index)
-            if torch.cuda.is_available()
-            else "CPU"
+            if requested.type == 'cuda'
+            else str(requested)
         ),
     }
 
@@ -355,26 +360,15 @@ def get_available_devices() -> list:
     # Returns device names that can be used in model loading.
     #
     # Returns:
-    #     List of device strings, e.g. ["cuda", "cpu"] or ["mps", "cpu"]
-    devices = []
-
-    # Check for CUDA (NVIDIA) - also covers AMD ROCm which uses torch.cuda API
-    if torch.cuda.is_available():
-        devices.append("cuda")
-
-    # Check for MPS (Apple Silicon)
-    if hasattr(torch.backends, "mps") and hasattr(torch.backends.mps, "is_available"):
-        if torch.backends.mps.is_available():
-            devices.append("mps")
-
-    # CPU is always available as fallback
-    devices.append("cpu")
-
-    return devices
+    #     Device policy names; ComfyUI resolves the concrete accelerator.
+    return ['default', 'cpu']
 
 
 def resolve_requested_device(requested_device: str | torch.device) -> torch.device:
     # Validate an explicit execution device without silently selecting another one.
+    if requested_device in ('default', 'auto', ''):
+        import comfy.model_management as mm
+        return mm.get_torch_device()
     device = torch.device(requested_device)
 
     if device.type == "cpu":
@@ -385,7 +379,7 @@ def resolve_requested_device(requested_device: str | torch.device) -> torch.devi
                 "The requested device 'cuda' is not available. Choose CPU or "
                 "install a CUDA/ROCm-enabled PyTorch build."
             )
-        return device
+        return device if device.index is not None else torch.device('cuda', torch.cuda.current_device())
     if device.type == "mps":
         mps_available = (
             hasattr(torch.backends, "mps")
@@ -398,10 +392,21 @@ def resolve_requested_device(requested_device: str | torch.device) -> torch.devi
             )
         return device
 
+    import comfy.model_management as mm
+    if device == mm.get_torch_device():
+        return device
+
     raise ValueError(
         f"Unsupported requested device '{requested_device}'. "
-        "Supported devices are cuda, cpu, and mps."
+        "Choose Default for ComfyUI's configured accelerator, or CPU."
     )
+
+
+def require_gguf_vision_device(device):
+    # llama-cpp-python's current vision handlers hardcode mtmd use_gpu=True.
+    # Do not silently run a projector on GPU for a CPU request.
+    if device.type == 'cpu':
+        raise RuntimeError('Native llama.cpp vision projectors do not support CPU selection. Use a ComfyUI text encoder or Transformers backend for CPU vision.')
 
 
 # ============================================================================

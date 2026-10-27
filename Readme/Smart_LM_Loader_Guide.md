@@ -149,7 +149,7 @@ Registry, Delete and Refresh actions; full verification is available in Registry
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| **device** | Dropdown | cuda | Compute device |
+| **device** | Dropdown | default | Default follows ComfyUI's device policy; CPU forces CPU processing. |
 | **temperature** | Float | 0.7 | Sampling temperature (0.1–2.0) |
 | **top_p** | Float | 0.9 | Nucleus sampling (0.1–1.0) |
 | **top_k** | Integer | 50 | Top-k sampling, 0=disabled |
@@ -310,7 +310,9 @@ Nova also checks the projector architecture, dimensions and tensor inventory. A 
 
 Opening the Model selector refreshes discovery. Copying, replacing or deleting a companion also invalidates the native model and workflow cache on the next run. Quantized transformer layers remain quantized; token embeddings and Qwen2.5's direct output projection are expanded for native generation, so runtime memory can exceed the GGUF file size. Shared encoder/projector files remain read-only to SmartLLM.
 
-**Device** selects ComfyUI's native automatic policy or the requested CPU/CUDA/MPS device. Checkpoint precision, attention and memory offloading follow ComfyUI. **Keep loaded** reuses the encoder while the file and loading settings match. Turning it off releases Nova's encoder after execution, including errors. ComfyUI can still offload cached weights to manage memory.
+**Device** offers **Default** and **CPU**. Default uses ComfyUI's native text-encoder placement and offloading policy; CPU forces CPU processing. Older Auto/CUDA/MPS selections load as Default. Checkpoint precision, attention and memory offloading follow ComfyUI. **Keep loaded** reuses the encoder while the file and resolved loading settings match. Turning it off releases Nova's encoder after execution, including errors. ComfyUI can still offload cached weights to manage memory.
+
+Local Transformers, YOLO and WD14 loading also use ComfyUI's selected device for memory reservations. Unsupported WD14/Florence accelerator paths use CPU. Managed GPU servers and native llama.cpp vision projectors cannot honor CPU selection and report that restriction; local Transformers and ComfyUI encoders support CPU vision.
 
 Prompts, task chaining, image batches, connected instructions and exact seeds retain Nova's existing workflow. **Training** uses the node's Standard/NSFW examples as labeled demonstrations in the system instructions; the native tokenizer accepts a single prompt rather than a chat message list. Native models use non-thinking templates where supported.
 

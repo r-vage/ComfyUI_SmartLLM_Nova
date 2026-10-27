@@ -264,6 +264,8 @@ def nms_filter(
     labels: List[str],
     iou_threshold: float = 0.5,
     containment_threshold: float = 0.7,
+    *,
+    groups: list[int] | None = None,
 ) -> Tuple[List[List[float]], List[str], List[int]]:
     # Apply Non-Maximum Suppression to remove overlapping bounding boxes.
     # Uses area-based sorting (smaller boxes preferred) and containment-based suppression.
@@ -273,6 +275,7 @@ def nms_filter(
     #     labels: List of labels corresponding to each bbox
     #     iou_threshold: IoU threshold for suppression (default: 0.5)
     #     containment_threshold: If smaller box is contained this much in larger box, suppress larger (default: 0.7)
+    #     groups: Optional per-box query IDs. Suppression stays within each query.
     #
     # Returns:
     #     Tuple of (filtered_bboxes, filtered_labels, keep_indices)
@@ -293,6 +296,9 @@ def nms_filter(
             bboxes = [list(bboxes)]  # type: ignore
     if boxes.ndim != 2 or boxes.shape[1] != 4:
         return [], [], []
+    if groups is not None and len(groups) != len(boxes):
+        raise ValueError("NMS groups must match the number of bounding boxes.")
+    group_ids = np.asarray(groups) if groups is not None else None
 
     # Calculate areas
     x1 = boxes[:, 0]
@@ -341,6 +347,8 @@ def nms_filter(
         # 1. Have high IoU with current box (standard NMS)
         # 2. Mostly contain the current smaller box (containment-based suppression)
         suppress_mask = (iou > iou_threshold) | (containment > containment_threshold)
+        if group_ids is not None:
+            suppress_mask &= group_ids[remaining] == group_ids[i]
 
         for idx, should_suppress in enumerate(suppress_mask):
             if should_suppress:

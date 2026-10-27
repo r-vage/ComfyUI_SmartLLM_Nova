@@ -321,11 +321,11 @@ def resolve_florence_load_plan(
     device_info: dict[str, Any] | None = None,
 ) -> FlorenceLoadPlan:
     # Resolve truthful Florence device/precision/attention before cache lookup.
-    automatic_device = requested_device == "auto"
-    if automatic_device:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    else:
-        device = resolve_requested_device(requested_device)
+    automatic_device = requested_device in ('auto', 'default')
+    device = resolve_requested_device(requested_device)
+    if automatic_device and device.type not in ('cpu', 'cuda'):
+        log.warning('Florence-2', f'Florence-2 does not support {device.type}; using CPU.')
+        device = torch.device('cpu')
     if device.type == "mps":
         raise RuntimeError(
             "Florence-2 on MPS is not qualified for the vendored Transformers "
@@ -708,7 +708,7 @@ def load_florence2_model(model_path: str, **load_kwargs) -> Any:
     expected_sha256_map = load_kwargs.pop("expected_sha256_map", None)
     target_device_value = load_kwargs.pop("device", None)
     if target_device_value is None:
-        target_device_value = "cuda" if torch.cuda.is_available() else "cpu"
+        target_device_value = 'default'
     target_device = resolve_requested_device(target_device_value)
     requested_device_mode = load_kwargs.pop(
         "requested_device_mode", str(target_device_value)

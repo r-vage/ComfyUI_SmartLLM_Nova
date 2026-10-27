@@ -143,12 +143,6 @@ def _build_few_shot_prompt(llm_mode: str, user_content: str) -> str:
 # ==============================================================================
 
 
-def _is_accelerate_dispatched(model) -> bool:
-    # Check if a model has been dispatched by accelerate (device_map="auto").
-    # Dispatched models have hf_device_map set and cannot be moved with .to().
-    return hasattr(model, "hf_device_map") and model.hf_device_map is not None
-
-
 def _set_vlm_seed(seed: Optional[int]) -> None:
     # Set random seed for reproducible generation.
     if seed is not None:
@@ -249,24 +243,9 @@ def _get_vlm_device(smart_lm_instance) -> torch.device:
     if effective_device:
         return torch.device(effective_device)
 
-    # Legacy quantized models use cuda:0 when CUDA is available.
-    if hasattr(smart_lm_instance, "is_quantized") and smart_lm_instance.is_quantized:
-        return (
-            torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-        )
-
-    # Non-quantized: try ComfyUI device management for optimal GPU memory handling
-    # Skip .to() for accelerate-dispatched models — they manage their own device placement
-    if _is_accelerate_dispatched(smart_lm_instance.model):
-        return next(smart_lm_instance.model.parameters()).device
-    try:
-        import comfy.model_management as mm  # type: ignore
-
-        device = mm.get_torch_device()
-        smart_lm_instance.model.to(device)
-        return device
-    except Exception:
-        return next(smart_lm_instance.model.parameters()).device
+    # Placement belongs to loading. Generation must not promote a CPU model or
+    # move a quantized/dispatched model to a different accelerator.
+    return next(smart_lm_instance.model.parameters()).device
 
 
 def _get_model_dtype(model) -> torch.dtype:

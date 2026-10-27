@@ -1241,7 +1241,7 @@ def sync_yolo_registry():
 
 def get_detection_model_list() -> List[str]:
     # Get detection-capable models for the Detection node dropdown.
-    # Combines VLM models (Florence + Qwen from shared registry) with YOLO models.
+    # Combines registered VLMs, native vision encoders and YOLO models.
     # Returns list with separator tokens for frontend grouping.
     shared_registry = load_all_registries()
     yolo_registry = _load_yolo_registry()
@@ -1267,6 +1267,11 @@ def get_detection_model_list() -> List[str]:
     if vlm_models:
         result.append(MODEL_SEP_DETECTION_VLM)
         result.extend(sorted(vlm_models))
+    native_vision = sorted(name for name, entry in get_text_encoder_entries().items()
+                           if entry.get("has_vision", False))
+    if native_vision:
+        result.append(MODEL_SEPARATOR_VISION)
+        result.extend(native_vision)
     if yolo_models:
         result.append(MODEL_SEP_YOLO)
         result.extend(sorted(yolo_models))

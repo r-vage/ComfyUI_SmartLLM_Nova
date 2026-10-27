@@ -6,11 +6,13 @@ import secrets
 
 from comfy_api.latest import io
 
+from .device import normalize_device_selection
+
 WIDGET_TYPE = "SMARTLLM_NOVA_PANEL"
 SCALARS = {"INT", "FLOAT", "BOOLEAN", "STRING", "COMBO"}
 OVERRIDES = {
     "loader": ("user_prompt",),
-    "detection": ("user_input", "confidence", "nms_iou_threshold", "detection_filter"),
+    "detection": ("user_input",),
     "bboxes": (), "yue2": ("song_json",), "music3": ("song_json",),
 }
 DYNAMIC = {"model", "model_name", "task", "task_2", "task_3", "task_4", "quantization"}
@@ -43,6 +45,9 @@ def editor_spec(schema, kind):
                 data[key] = value
         if field.id in {"model", "model_name"} and str(data["default"]).startswith("__SEP__"):
             data["default"] = next((name for name in data["options"] if not name.startswith("__SEP__")), "")
+        if field.id == 'device':
+            data.update(options=['default', 'cpu'], default=normalize_device_selection(data['default']),
+                        tip='Default follows ComfyUI’s configured device; CPU forces CPU processing. Backend accelerator support still applies.')
         fields[field.id] = data
     return {"kind": kind, "title": schema.display_name, "fields": fields,
             "seed": any(field.id == "seed" for field in schema.inputs)}
@@ -57,6 +62,8 @@ def default_configuration(spec):
 
 
 def validate_value(value, key, field):
+    if key == 'device':
+        value = normalize_device_selection(value)
     kind = field["type"]
     if kind in {"INT", "FLOAT"}:
         if type(value) not in (int, float) or (isinstance(value, float) and not math.isfinite(value)):
@@ -153,14 +160,14 @@ class SmartLLMPanel:
         seed = config.get("seed")
         if seed and (seed["source"] == "local" or scalar(_inputs.get("seed_input")) is None) and seed["policy"] != "fixed":
             return float("nan")
-        if cls.PANEL_KIND == "loader":
+        if cls.PANEL_KIND in {"loader", "detection"}:
             from .text_encoders import (
                 DISPLAY_PREFIX,
                 resolve_text_encoder_path,
                 text_encoder_signature,
             )
 
-            model = config["parameters"]["model"]
+            model = config["parameters"]["model" if cls.PANEL_KIND == "loader" else "model_name"]
             if model.startswith(DISPLAY_PREFIX):
                 path = resolve_text_encoder_path(model[len(DISPLAY_PREFIX):])
                 return (configuration, text_encoder_signature(path))
@@ -171,6 +178,11 @@ class SmartLLMPanel:
         spec = cls._panel_spec()
         config = parse_configuration(configuration, spec)
         params = config["parameters"]
+        if cls.PANEL_KIND == "detection":
+            # Older API prompts can still supply these removed sockets. The
+            # saved panel values now control filtering; discard obsolete kwargs.
+            for key in ("confidence", "nms_iou_threshold", "detection_filter"):
+                inputs.pop(key, None)
         list_overrides = {}
         for key in OVERRIDES[cls.PANEL_KIND]:
             value = inputs.pop(key, None)

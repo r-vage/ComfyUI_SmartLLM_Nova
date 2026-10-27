@@ -2,6 +2,7 @@ import { SeedState } from './nova-panel-seed.js';
 export class PanelState extends SeedState {
     constructor(raw, spec, editor = {}) {
         super(); this.spec = spec; this.config = JSON.parse(raw);
+        if (this.config?.parameters && spec.fields.device && ['auto', 'cuda', 'mps', 'gpu', ''].includes(this.config.parameters.device)) this.config.parameters.device = 'default';
         if (this.config.version !== 1 || this.config.kind !== spec.kind || !this.config.parameters
             || Object.entries(spec.fields).some(([key, field]) => !Object.hasOwn(this.config.parameters, key) && !field.optional)) throw Error('Unsupported configuration.');
         for (const [key, field] of Object.entries(spec.fields)) {

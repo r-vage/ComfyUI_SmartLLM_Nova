@@ -1,3 +1,37 @@
+## 2026-10-27
+
+### Version: 1.1.7
+
+- **Fix**
+  - Support older YOLO segmentation checkpoints while retaining restricted loading and artifact verification. Report classification checkpoints clearly when they cannot supply detection boxes or masks.
+  - Use Default/CPU device choices with compatible restoration of older workflows. Follow ComfyUI's selected device for local model placement, memory reservations, text-encoder offloading and device-aware caches. Keep CPU generation on CPU, use the selected CUDA index for YOLO/WD14 and native GGUF text loading, and report unsupported CPU backends instead of silently accelerating them.
+  - Include native ComfyUI vision encoders in Smart Detection, reusing Smart LM Loader's capability discovery and loading for supported safetensors and GGUF files. Keep text-only encoders out of detection, expose the supported grounding tasks, and preserve per-image boxes, masks, SEGS, cleanup and checkpoint-aware caching.
+  - Ground comma-, semicolon- or newline-separated detection targets independently with the same loaded model. Combine their results and retain overlapping targets instead of allowing one query to suppress another. Preserve the query as the category label when native encoders return boxes without labels, so category prompts remain usable downstream.
+  - Keep confidence, NMS and maximum region area in the Detection panel without override sockets. Remove their retired workflow links safely, preserve image/prompt/seed connections and accept older API prompts using saved panel values.
+- **Docs**
+  - Explain native vision encoder selection and detection settings in the Smart Detection guide.
+- **Changed files**
+  - Readme/Smart_LM_Loader_Guide.md
+  - core/sml/device.py
+  - core/sml/backend_comfyui.py
+  - core/sml/backend_transformers.py
+  - core/sml/backend_wd14.py
+  - core/sml/backend_yolo.py
+  - core/sml/florence2_wrapper.py
+  - core/sml/loader_base.py
+  - core/sml/vlm_loader.py
+  - js/nova-panel-state.js
+  - Readme/Smart_Detection_Guide.md
+  - core/sml/grounding_queries.py
+  - core/sml/model_registry.py
+  - core/sml/panel_configuration.py
+  - core/sml/vlm_detection.py
+  - js/nova-panel-controls.js
+  - js/nova-panel-form.js
+  - js/nova-panel.js
+  - py/RvLoader_SmartDetection.py
+  - pyproject.toml
+
 ## 2026-10-25
 
 ### Version: 1.1.6

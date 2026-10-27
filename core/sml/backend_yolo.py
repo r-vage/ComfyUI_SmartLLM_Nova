@@ -194,6 +194,14 @@ _yolo_policy_lock = threading.Lock()
 _yolo_safe_policy_ready = False
 
 
+def _legacy_yolo_set_type(name: str) -> type:
+    # Older Dill-saved checkpoints encode nn.Module's buffer sets this way.
+    # Resolve only the builtin set; never import Dill or expose its type map.
+    if type(name) is str and name == "set":
+        return set
+    raise pickle.UnpicklingError("Unsupported type reference in YOLO checkpoint")
+
+
 def _configure_restricted_ultralytics_loading() -> None:
     # Permanently enable Ultralytics' weights-only loader and add a narrow,
     # audited compatibility set for legacy inference checkpoints.
@@ -237,6 +245,7 @@ def _configure_restricted_ultralytics_loading() -> None:
             )
 
         audited_globals = [
+            (_legacy_yolo_set_type, "dill._dill._load_type"),
             IterableSimpleNamespace,
             (IterableSimpleNamespace, "ultralytics.yolo.utils.IterableSimpleNamespace"),
             BboxLoss,
@@ -277,12 +286,14 @@ def load_yolo_model(model_path: str, device: str = "") -> Any:
     #
     # Args:
     #     model_path: Full path to the .pt model file, or just a filename to resolve
-    #     device: Device to load on ("cuda", "cpu", or "" for auto)
+    #     device: "default" (ComfyUI's device), "cpu", or a resolved device
     #
     # Returns:
     #     Loaded YOLO model instance
     global _yolo_cache
 
+    from .device import resolve_requested_device
+    target_device = resolve_requested_device(device)
     with _yolo_load_lock:
         # Resolve filename to full path if needed.
         if not os.path.isabs(model_path) and not os.path.isfile(model_path):
@@ -305,6 +316,7 @@ def load_yolo_model(model_path: str, device: str = "") -> Any:
         if (
             _yolo_cache.get("model_path") == model_path
             and _yolo_cache.get("model_signature") == model_signature
+            and _yolo_cache.get('device') == str(target_device)
             and _yolo_cache.get("model") is not None
         ):
             log.debug(
@@ -342,9 +354,17 @@ def load_yolo_model(model_path: str, device: str = "") -> Any:
                 "dedicated container. SmartLLM will not retry with unrestricted pickle."
             ) from error
 
+        if model.task == "classify":
+            raise ValueError(
+                f"YOLO checkpoint '{os.path.basename(model_path)}' is a classification "
+                "model and cannot return boxes or masks. Choose a detection or "
+                "segmentation checkpoint for Smart Detection."
+            )
+
         _yolo_cache = {
             "model_path": model_path,
             "model_signature": model_signature,
+            'device': str(target_device),
             "model": model,
         }
         return model
@@ -386,7 +406,7 @@ def detect_yolo(
     #     model: Loaded YOLO model instance (from load_yolo_model)
     #     pil_image: Input PIL Image
     #     confidence: Minimum confidence threshold (0-1)
-    #     device: Device for inference ("cuda", "cpu", or "" for auto)
+    #     device: "default" (ComfyUI's device), "cpu", or a resolved device
     #
     # Returns:
     #     (summary_text, detection_data, instance_masks) where:
@@ -395,9 +415,20 @@ def detect_yolo(
     #     - instance_masks: List of numpy arrays [H,W] float32 for seg models, empty for bbox-only
 
     # Run inference
-    kwargs: Dict[str, Any] = {"conf": confidence, "verbose": False}
-    if device and device != "auto":
-        kwargs["device"] = device
+    import comfy.model_management as mm
+
+    from .device import resolve_requested_device
+
+    target_device = resolve_requested_device(device)
+    if target_device.type != 'cpu':
+        weights = sum(p.numel() * p.element_size() for p in model.model.parameters())
+        mm.free_memory(weights + 512 * 1024**2, target_device)
+    # Ultralytics retains its predictor between calls; do not retain its old device.
+    predictor = getattr(model, 'predictor', None)
+    if predictor is not None and predictor.device != target_device:
+        model.predictor = None
+        model.to(target_device)
+    kwargs: Dict[str, Any] = {'conf': confidence, 'verbose': False, 'device': target_device}
 
     results = model(pil_image, **kwargs)
 

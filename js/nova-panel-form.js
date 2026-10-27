@@ -29,7 +29,8 @@ export class PanelForm {
         const model = this.params[this.modelKey], sequence = ++this.sequence;
         const entry = await fetchModelEntry(model);
         const tasks = this.spec.kind === 'loader' && entry?.backend !== 'wd14'
-            ? await fetchTaskList(entry?.has_vision ?? true, entry?.family ?? '') : DET_TASKS[entry?.family];
+            ? await fetchTaskList(entry?.has_vision ?? true, entry?.family ?? '')
+            : entry?.backend === 'comfyui' && entry.has_vision ? DET_TASKS.Qwen : DET_TASKS[entry?.family];
         const textTasks = this.spec.kind === 'loader' ? await fetchTaskList(false, '') : null;
         if (sequence !== this.sequence || this.controller.disposed || this.controller.invalid || this.params[this.modelKey] !== model) return;
         this.entry = entry; this.model = model; this.tasks = clean(tasks); this.textTasks = clean(textTasks);
@@ -79,7 +80,7 @@ export class PanelForm {
             this.section(content, 'detection', 'Detection', ['user_input', ['confidence', 'nms_iou_threshold'], ['detection_filter', 'select_index']]);
             this.section(content, 'adjustments', 'Adjustments', [['drop_size', 'crop_factor'], 'dilation', ...(florence ? ['convert_to_bboxes'] : [])]);
             if (!yolo) this.sampling(content, florence, backend, false);
-            this.section(content, 'hardware', 'Hardware', ['device', ...(!yolo ? ['use_torch_compile'] : [])]);
+            this.section(content, 'hardware', 'Hardware', ['device', ...(!yolo && backend !== 'comfyui' ? ['use_torch_compile'] : [])]);
         } else if (kind === 'bboxes') {
             this.bar(content, ['get_mask_from_image', 'invert', 'combine_masks']);
             if (this.params.get_mask_from_image) this.section(content, 'detection', 'Image detection', ['detect_color', ['threshold', 'min_area']]);

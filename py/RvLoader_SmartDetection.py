@@ -1,6 +1,6 @@
 # RvLoader_Detection - Smart Detection Node
 #
-# Unified detection node with Florence-2, Qwen VL, and YOLO backends.
+# Unified detection with Florence-2, Qwen VL, native vision encoders and YOLO.
 # Model-driven UI — backend and family inferred from model selection.
 # Outputs: image (preview boxes), mask, SEGS (Impact Pack compatible), data (JSON).
 #
@@ -25,6 +25,10 @@ from ..core.sml.backend_yolo import (
     unload_yolo_model,
 )
 from ..core.sml.config_templates import TemplateContext
+from ..core.sml.grounding_queries import (
+    merge_grounding_results,
+    split_grounding_queries,
+)
 from ..core.sml.lifecycle import (
     register_execution_cleanup,
     with_execution_cleanup,
@@ -228,8 +232,8 @@ def _generate_qwen_detection(
     context_size,
     backend,
 ):
-    # Generate detection results with Qwen VL.
-    # Routes to correct backend (Transformers, GGUF, Docker).
+    # Generate structured detection with Qwen VL or native vision encoders.
+    # Routes to the existing model backend and shares coordinate parsing.
     system_prompt = get_system_prompt(task_name)
     prompt = system_prompt or "Detect all objects in this image."
     if user_input and user_input.strip():
@@ -239,8 +243,18 @@ def _generate_qwen_detection(
     original_size = resized_size = None
 
     try:
+        if getattr(instance, "is_comfyui", False):
+            from ..core.sml.backend_comfyui import generate_comfyui
+
+            result, _ = generate_comfyui(
+                instance, prompt=(user_input or "").strip() or "Detect all objects in this image.",
+                task_name=task_name, llm_mode=None, system_prompt=system_prompt,
+                use_few_shot=False, image=image, max_tokens=max_tokens,
+                do_sample=do_sample, temperature=temperature, top_p=top_p,
+                top_k=top_k, min_p=0.0, repetition_penalty=repetition_penalty, seed=seed,
+            )
         # Docker backends need temp files
-        if hasattr(instance, "is_vllm") and instance.is_vllm:
+        elif hasattr(instance, "is_vllm") and instance.is_vllm:
             native = hasattr(instance, "is_vllm_native") and instance.is_vllm_native
             if native:
                 from ..core.sml.backend_vllm_native import generate_vllm
@@ -373,7 +387,10 @@ def _generate_qwen_detection(
     if pil_img is None:
         raise ValueError("Failed to convert image tensor to PIL Image")
     img_size = original_size or (pil_img.width, pil_img.height)
-    data, cleaned = parse_qwen_detection_json(result, image_size=img_size)
+    data, cleaned = parse_qwen_detection_json(
+        result, image_size=img_size,
+        fallback_label=user_input if task_name == "Caption to Phrase Grounding" else "",
+    )
     if not data:
         data = {}
 
@@ -462,6 +479,11 @@ def _filter_yolo_by_class(data, instance_masks, user_input):
 
 def _cleanup_model(*, loading_method, keep_model_loaded, model_path, instance):
     if keep_model_loaded:
+        return
+    if loading_method == "ComfyUI":
+        from ..core.sml.backend_comfyui import release_text_encoder
+
+        release_text_encoder(instance)
         return
 
     # Docker auto-stop — bound to keep_model_loaded (OFF = stop container)
@@ -707,7 +729,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
             display_name="Smart Detection",
             search_aliases=["Smart Detection SML", "YOLO", "VLM Detection", "WD14"],
             category=CATEGORY.MAIN.value + CATEGORY.LOADER.value,
-            description="Detection node with Florence-2, Qwen VL, and YOLO backends. "
+            description="Detection with Florence-2, Qwen VL, native ComfyUI vision encoders and YOLO. "
             "Outputs: image (preview boxes), mask, SEGS (Impact Pack compatible), data (JSON).",
             inputs=[
                 # ── Mode options ──
@@ -762,7 +784,8 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
                     default="",
                     multiline=True,
                     tooltip="Input query for detection:\n"
-                    "• Florence/Qwen grounding: The phrase/object you want to locate (e.g. 'the black cat').\n"
+                    "• Phrase grounding: Separate targets with commas, semicolons or newlines (e.g. 'eye, breast'). "
+                    "Each target runs a separate query using the same loaded model; results are combined.\n"
                     "• YOLO: Semicolon-separated target classes to filter (e.g. 'person;car;backpack'). Leave empty to output all classes.",
                 ),
                 # ── Detection parameters ──────────────────────────────
@@ -1035,6 +1058,11 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
         name = entry["name"]
         family_str = entry.get("family", "")
         loading_method = _BACKEND_TO_METHOD.get(backend, "Transformers")
+        if backend == "comfyui":
+            if not entry.get("has_vision", False):
+                raise ValueError("Smart Detection requires an encoder with vision weights.")
+            if task not in {"Caption to Phrase Grounding", "Region Caption"}:
+                raise ValueError("Native vision encoders support Caption to Phrase Grounding or Region Caption for detection.")
 
         log.msg(
             _LOG_PREFIX,
@@ -1187,7 +1215,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
             )
             cleanup_state["instance"] = instance
 
-        elif family_str == "Qwen":
+        elif family_str == "Qwen" or backend == "comfyui":
             model_path, needs_download = _resolve_model_path(
                 entry, quantization if backend in _GGUF_BACKENDS else None
             )
@@ -1221,7 +1249,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
                 )
 
             ctx = TemplateContext.from_widgets(
-                model_family="Qwen",
+                model_family=family_str,
                 model_type="",
                 loading_method=loading_method,
                 quantization=quantization if backend in _GGUF_BACKENDS else "auto",
@@ -1246,7 +1274,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
             )
             model_obj, processor, model_type = load_model_with_backend(
                 loading_method=loading_method,
-                model_family="Qwen",
+                model_family=family_str,
                 model_path=model_path,
                 ctx=ctx,
                 quantization=quantization if backend in _GGUF_BACKENDS else "auto",
@@ -1260,9 +1288,12 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
                 repo_id=repo_id,
                 revision=entry.get("revision"),
                 expected_sha256=entry.get("expected_sha256"),
+                text_encoder_entry=entry if backend == "comfyui" else None,
             )
             cleanup_state["instance"] = model_obj
-            if (
+            if getattr(model_obj, "is_comfyui", False):
+                instance = model_obj
+            elif (
                 hasattr(model_obj, "is_vllm")
                 or hasattr(model_obj, "is_sglang")
                 or hasattr(model_obj, "is_ollama")
@@ -1299,6 +1330,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
         out_masks = []
         out_segs = []
         out_datas = []
+        queries = split_grounding_queries(task, user_input) if family_str != "YOLO" else []
 
         for run_idx, single_image in enumerate(flat_images):
             # Prep single image PIL and shape parameters
@@ -1345,6 +1377,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
             # Run Inference
             data = {}
             instance_masks = []
+            nms_groups = None
 
             if family_str == "YOLO":
                 _, data, instance_masks = detect_yolo(
@@ -1353,53 +1386,50 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
                 data, instance_masks = _filter_yolo_by_class(
                     data, instance_masks, user_input
                 )
-            elif family_str == "Florence":
-                _, data = _generate_florence_detection(
-                    instance,
-                    single_image,
-                    task,
-                    user_input,
-                    max_tokens=4096,
-                    num_beams=num_beams,
-                    do_sample=do_sample,
-                    seed=seed,
-                    repetition_penalty=repetition_penalty,
-                    convert_to_bboxes=convert_to_bboxes,
-                    context_size=4096,
-                    detection_filter_threshold=detection_filter,
-                    nms_iou_threshold=nms_iou_threshold,
-                )
+            else:
+                query_results = []
+                for query in queries:
+                    if family_str == "Florence":
+                        _, data = _generate_florence_detection(
+                            instance,
+                            single_image,
+                            task,
+                            query,
+                            max_tokens=4096,
+                            num_beams=num_beams,
+                            do_sample=do_sample,
+                            seed=seed,
+                            repetition_penalty=repetition_penalty,
+                            convert_to_bboxes=convert_to_bboxes,
+                            context_size=4096,
+                            detection_filter_threshold=detection_filter,
+                            nms_iou_threshold=nms_iou_threshold,
+                        )
+                        data.setdefault("backend", "Florence-2")
+                    else:
+                        _, data, _, _ = _generate_qwen_detection(
+                            instance,
+                            single_image,
+                            task,
+                            query,
+                            max_tokens=4096,
+                            temperature=temperature,
+                            top_p=top_p,
+                            top_k=top_k,
+                            seed=seed,
+                            num_beams=num_beams,
+                            do_sample=do_sample,
+                            repetition_penalty=repetition_penalty,
+                            context_size=8192,
+                            backend=backend,
+                        )
+                        data.setdefault("backend", "ComfyUI" if backend == "comfyui" else "Qwen")
+                    data, _ = _apply_confidence_filter(data, [], confidence)
+                    query_results.append(data)
+                data, nms_groups = merge_grounding_results(query_results, (image_w, image_h))
                 data.setdefault("coord_range", 0)
-                data.setdefault("backend", "Florence-2")
                 data.setdefault("model", name)
                 data.setdefault("task", task)
-                data, instance_masks = _apply_confidence_filter(
-                    data, instance_masks, confidence
-                )
-            elif family_str == "Qwen":
-                _, data, _, _ = _generate_qwen_detection(
-                    instance,
-                    single_image,
-                    task,
-                    user_input,
-                    max_tokens=4096,
-                    temperature=temperature,
-                    top_p=top_p,
-                    top_k=top_k,
-                    seed=seed,
-                    num_beams=num_beams,
-                    do_sample=do_sample,
-                    repetition_penalty=repetition_penalty,
-                    context_size=8192,
-                    backend=backend,
-                )
-                data.setdefault("coord_range", 0)
-                data.setdefault("backend", "Qwen")
-                data.setdefault("model", name)
-                data.setdefault("task", task)
-                data, instance_masks = _apply_confidence_filter(
-                    data, instance_masks, confidence
-                )
 
             # Filtering & Post-process
             data = scale_normalized_detection_to_pixels(
@@ -1419,7 +1449,8 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
 
             # NMS filter
             nms_bboxes, nms_labels, keep_indices = nms_filter(
-                data["bboxes"], data.get("labels", []), nms_iou_threshold
+                data["bboxes"], data.get("labels", []), nms_iou_threshold,
+                groups=nms_groups,
             )
             data["bboxes"] = nms_bboxes
             data["labels"] = nms_labels

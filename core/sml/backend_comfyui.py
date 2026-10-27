@@ -68,7 +68,7 @@ def load_text_encoder(entry: dict, *, device: str, keep_model_loaded: bool) -> C
         if details["_projector_path"]:
             projector = Path(details["_projector_path"])
         signature = (signature, file_signature(projector) if projector else None)
-    load_device = mm.text_encoder_device() if device == "auto" else resolve_requested_device(device)
+    load_device = mm.text_encoder_device() if device in ('default', 'auto') else resolve_requested_device(device)
     # ComfyUI's dynamic patcher needs a concrete GPU index, including in cache identity.
     if load_device.type == "cuda" and load_device.index is None:
         load_device = torch.device("cuda", torch.cuda.current_device())
@@ -93,7 +93,7 @@ def load_text_encoder(entry: dict, *, device: str, keep_model_loaded: bool) -> C
         )
     instance = ComfyTextEncoder(clip, entry["architecture"], entry["has_vision"], key)
     try:
-        if device != "auto" and clip.patcher.load_device != load_device:
+        if device not in ('default', 'auto') and clip.patcher.load_device != load_device:
             raise RuntimeError("ComfyUI cannot run this text encoder on the requested device.")
         if not callable(getattr(clip.cond_stage_model, "generate", None)):
             raise TypeError("This text encoder does not support ComfyUI text generation.")

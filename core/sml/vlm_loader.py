@@ -210,13 +210,8 @@ def resolve_vlm_load_plan(
 ) -> VlmLoadPlan:
     # Resolve every setting that affects placement and cache compatibility once.
     requested_device = (requested_device or "auto").lower()
-    device_info = get_device_info()
-    target_name = (
-        device_info["recommended_device"]
-        if requested_device == "auto"
-        else requested_device
-    )
-    device = resolve_requested_device(target_name)
+    device = resolve_requested_device(requested_device)
+    device_info = get_device_info(device)
     config_data = _read_vlm_config(model_path)
     is_mllama, is_qwen3_5 = _vlm_architecture_flags(config_data)
 
@@ -263,7 +258,7 @@ def resolve_vlm_load_plan(
             else config_dtype
             or (torch.float32 if device.type == "cpu" else torch.float16)
         )
-        if requested_device == "auto" and device.type == "cuda":
+        if requested_device in ('auto', 'default') and device.type == "cuda":
             accelerator_info = get_device_info(device)
             required_gb = _native_memory_requirement_gb(
                 model_size_gb,
@@ -316,7 +311,7 @@ def resolve_vlm_load_plan(
             dtype = torch.float16
             best_effort = decision.best_effort
             shortfall_gb = decision.shortfall_gb
-            if best_effort and requested_device == "auto":
+            if best_effort and requested_device in ('auto', 'default'):
                 cpu_required_gb = _native_memory_requirement_gb(
                     model_size_gb,
                     dtype=torch.float32,
@@ -339,7 +334,7 @@ def resolve_vlm_load_plan(
             if best_effort:
                 target_policy = (
                     "The explicit CUDA target will not silently fall back to CPU."
-                    if requested_device != "auto"
+                    if requested_device not in ('auto', 'default')
                     else "CPU FP32 also exceeds the current memory budget."
                 )
                 log.warning(
@@ -394,7 +389,7 @@ def resolve_vlm_load_plan(
     if device.type == "cuda":
         device_map = {"": device.index or 0}
     else:
-        device_map = {"": device.type}
+        device_map = {"": str(device)}
 
     return VlmLoadPlan(
         requested_device=requested_device,
@@ -640,7 +635,7 @@ def _resize_lm_head_if_needed(model, quantization: str) -> None:
                 input_size,
                 bias=False,
                 dtype=torch.float16,
-                device="cuda:0",
+                device=old_weight.device,
             )
 
             # Copy existing weights and initialize new ones

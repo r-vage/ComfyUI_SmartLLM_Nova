@@ -14,6 +14,7 @@ A comprehensive guide to the **Smart Detection** node for ComfyUI SmartLLM Nova.
 - [Detection Backends](#detection-backends)
   - [Florence-2](#florence-2)
   - [Qwen VL](#qwen-vl)
+  - [Native ComfyUI vision encoders](#native-comfyui-vision-encoders)
   - [YOLO](#yolo)
 - [Tasks Reference](#tasks-reference)
 - [Detection Parameters](#detection-parameters)
@@ -25,7 +26,7 @@ A comprehensive guide to the **Smart Detection** node for ComfyUI SmartLLM Nova.
 
 ## Overview
 
-The **Smart Detection** node is a unified detection node with Florence-2, Qwen VL, and YOLO backends. It detects objects, generates bounding boxes, and outputs masks and SEGS (Impact Pack compatible). The UI is model-driven — backend and family are inferred from your model selection.
+The **Smart Detection** node supports Florence-2, Qwen VL, native ComfyUI vision encoders, and YOLO. It detects objects, generates bounding boxes, and outputs masks and SEGS (Impact Pack compatible). The UI is model-driven — backend and family are inferred from your model selection.
 
 ### What Can This Node Do?
 
@@ -42,7 +43,7 @@ The **Smart Detection** node is a unified detection node with Florence-2, Qwen V
 
 | Feature | Description |
 |---------|-------------|
-| **3 Detection Backends** | Florence-2 (Transformers), Qwen VL (all backends), YOLO (ultralytics) |
+| **Detection Models** | Florence-2 (Transformers), Qwen VL (registered backends), native ComfyUI vision encoders, YOLO (ultralytics) |
 | **Model-Driven UI** | Backend/family auto-detected from model selection; task list filtered per family |
 | **Impact Pack Compatible** | SEGS output with crop factor and mask dilation |
 | **Preview Boxes** | Toggle bounding box overlay on image output |
@@ -75,9 +76,9 @@ and **Hardware** for device settings. Collapsing a section does not disable it.
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | **model_name** | Dropdown | — | Detection model. Suffix indicates backend |
-| **quantization** | Dropdown | Q4_K_M | GGUF only — quantization variant |
-| **task** | Dropdown | — | Detection task. Florence: 7 tasks, Qwen: 2 tasks, YOLO: hidden |
-| **user_input** | String | — | Grounding query. Florence: focused phrases such as `eye;face;mouth`. Qwen: natural language. YOLO: optional filter among classes supported by the selected model, such as `face` for a face detector. Leave empty to detect all supported classes |
+| **quantization** | Dropdown | Q4_K_M | Registered GGUF backends only — quantization variant. Native encoders use the selected file's precision |
+| **task** | Dropdown | — | Detection task. Florence: 7 tasks, Qwen/native vision encoders: 2 tasks, YOLO: hidden |
+| **user_input** | String | — | Phrase grounding: separate targets with commas, semicolons or newlines, such as `eye, breast` or `the black cat; the white dog`. Each target runs independently. YOLO: optional semicolon-separated filter among classes supported by the selected model; leave empty to detect all classes |
 
 #### Detection Parameters
 
@@ -95,10 +96,10 @@ and **Hardware** for device settings. Collapsing a section does not disable it.
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| **device** | Dropdown | cuda | Compute device |
-| **num_beams** | Integer | 1 | Beam search count |
+| **device** | Dropdown | default | Default follows ComfyUI's configured accelerator; CPU forces CPU processing. |
+| **num_beams** | Integer | 1 | Beam search count; hidden for native ComfyUI encoders |
 | **do_sample** | Boolean | True | Enable sampling vs greedy decoding |
-| **use_torch_compile** | Boolean | False | torch.compile for faster inference |
+| **use_torch_compile** | Boolean | False | torch.compile for supported external backends; hidden for native ComfyUI encoders |
 | **convert_to_bboxes** | Boolean | False | Florence-only: convert quads/polys to bboxes |
 | **temperature** | Float | 0.7 | Sampling temperature |
 | **top_p** | Float | 0.9 | Nucleus sampling |
@@ -112,10 +113,12 @@ and **Hardware** for device settings. Collapsing a section does not disable it.
 |-------|------|-------------|
 | **image** | IMAGE | Image to detect objects in (required) |
 | **user_input** | STRING | Optional prompt or class-filter override |
-| **confidence** | FLOAT | Optional confidence override |
-| **nms_iou_threshold** | FLOAT | Optional NMS threshold override |
-| **detection_filter** | FLOAT | Optional maximum region-area ratio override |
 | **seed_input** | INT | Optional unsigned 64-bit seed, used when Local seed is disabled |
+
+Confidence, NMS overlap and maximum region area are controlled in the **Detection**
+section. Existing workflows keep their saved panel values and remaining connections;
+the three former override sockets and their links are removed when loaded. Older
+API prompts may still contain those inputs, but the node uses its panel values.
 
 ### Outputs
 
@@ -202,6 +205,38 @@ work in both classic rendering and Nodes 2.0.
 
 > ⚠️ **WIP:** Qwen VL detection is under construction — results may be inconsistent. Florence-2 and YOLO are more reliable for detection.
 
+### Native ComfyUI vision encoders
+
+The **ComfyUI vision encoders** group uses the same discovery and native loading
+path as Smart LM Loader. Add supported checkpoints to `models/text_encoders`
+(or a configured ComfyUI text encoder folder), then refresh the model list.
+Vision capability comes from the checkpoint contents, not a `VL` filename.
+Text-only encoders are excluded from Detection.
+
+Choose **Caption to Phrase Grounding** and enter what to find in **Prompt / classes**,
+or use **Region Caption** to describe detected regions. Results use the existing
+image, mask, SEGS and data outputs, with boxes mapped to each source image's size.
+These tasks ask a generative model for structured JSON: detection accuracy depends
+on the model, so review its boxes before using them for detailing.
+
+For **Caption to Phrase Grounding**, use commas, semicolons or newlines to separate
+targets. For example, `eye, breast` runs one query for eyes and another for breasts.
+The same loaded model handles every query, and the node combines their boxes,
+masks and SEGS for each image. More targets take more inference time. Duplicate
+target names are queried once; overlapping targets such as `eye, face` remain
+separate detections. This also applies to Florence and registered Qwen models.
+Native encoder results without labels use the requested phrase as their category,
+so downstream category prompts can still match it. Explicit model labels are preserved.
+Other tasks keep the complete prompt intact.
+
+Supported safetensors checkpoints work directly. Supported GGUF encoders also
+appear when the existing loader finds a compatible vision projector in the same
+folder; projector selection and compatibility follow the
+[Smart LM Loader guide](Smart_LM_Loader_Guide.md). Shared encoder files cannot be
+deleted from this node. Precision comes from the selected file, and ComfyUI
+manages its memory. **Keep loaded** can retain the encoder between runs; with it
+off, the node releases the encoder after detection, including failed runs.
+
 ### YOLO
 
 **YOLO** (ultralytics) — fast single-shot object detection.
@@ -220,6 +255,13 @@ work in both classic rendering and Nodes 2.0.
 - Instance segmentation masks with -seg models
 - Class filtering via user_input
 - No VRAM-heavy LLM loading
+
+Detection and segmentation are selected from the loaded checkpoint, including
+YOLO9/11/12 architecture blocks and older segmentation checkpoints. A `segm`
+folder or filename does not turn a detection-only model into a segmentation model.
+Classification checkpoints cannot provide boxes or masks and report an error.
+Loading remains restricted; compatibility for older Dill-saved checkpoints only
+restores module buffer sets. Registered download hashes are still checked.
 
 **Limitations:**
 - Fixed class vocabulary (no natural language queries)
@@ -269,7 +311,7 @@ Detections go through this pipeline in order:
 1. **Backend generates** raw detections (bboxes, labels, confidences)
 2. **YOLO class filter** — filter by user_input class names (YOLO only)
 3. **Confidence filter** — remove detections below `confidence` threshold
-4. **NMS** — merge overlapping bboxes using `nms_iou_threshold`
+4. **NMS** — suppress duplicate bboxes using `nms_iou_threshold`; separate grounding queries do not suppress each other's boxes
 5. **Detection filter** — remove bboxes larger than `detection_filter` × image area
 6. **Drop size** — remove bboxes with width or height ≤ `drop_size` pixels
 7. **Build SEGS** — create Impact Pack SEGS with `crop_factor` and `dilation`
@@ -394,4 +436,4 @@ Enable in `config.json`:
 
 ---
 
-*Guide for ComfyUI SmartLLM v3.3.4*
+*Guide for ComfyUI SmartLLM Nova*

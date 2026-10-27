@@ -5,6 +5,14 @@ import { PanelState } from './nova-panel-state.js';
 import { PanelForm } from './nova-panel-form.js';
 import { installSeedQueueHook } from './nova-panel-seed-queue.js';
 const WIDGET = 'SMARTLLM_NOVA_PANEL', EDITOR = 'SmartLLMNova.panel', controllers = new WeakMap();
+const DETECTION_PANEL_ONLY = new Set(['confidence', 'nms_iou_threshold', 'detection_filter']);
+function removeDetectionOverrides(node) {
+    if (!node.graph) return;
+    // Wait until every saved node has restored its links, including seed_input.
+    for (let index = node.inputs.length - 1; index >= 0; index--) {
+        if (DETECTION_PANEL_ONLY.has(node.inputs[index].name)) node.removeInput(index);
+    }
+}
 app.registerExtension({
     name: 'SmartLLMNova.Panels',
     setup() {
@@ -31,6 +39,9 @@ app.registerExtension({
         type.prototype.onConfigure = function (...args) {
             const result = configure?.apply(this, args), controller = controllers.get(this);
             if (controller) { controller.restore(controller.value()); controller.bindHost(); }
+            if (data.input.required.configuration[1].editorSpec.kind === 'detection') {
+                queueMicrotask(() => removeDetectionOverrides(this));
+            }
             return result;
         };
         type.prototype.onAdded = function (...args) {
