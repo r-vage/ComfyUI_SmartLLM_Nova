@@ -1,3 +1,14 @@
+## 2026-10-29
+
+### Version: 1.1.8
+
+- **Fix**
+  - Restore middle-button canvas panning and wheel zoom over node panels in classic ComfyUI and Nodes 2.0. Preserve focused text scrolling, normal control clicks and workflow reloads.
+- **Changed files**
+  - js/nova-configuration-panel.js
+  - js/nova-panel-wheel.js
+  - pyproject.toml
+
 ## 2026-10-27
 
 ### Version: 1.1.7

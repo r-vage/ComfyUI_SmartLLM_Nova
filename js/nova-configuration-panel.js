@@ -1,5 +1,5 @@
 /** Lifecycle for one serialized DOM configuration panel in classic and Nodes 2.0. */
-import { captureFocusedTextWheel } from './nova-panel-wheel.js';
+import { captureFocusedTextWheel, forwardCanvasNavigation } from './nova-panel-wheel.js';
 
 const graphKey = Symbol('SmartLLMNova.ConfigurationGraph');
 export class ConfigurationPanel {
@@ -14,6 +14,7 @@ export class ConfigurationPanel {
         }
         this.root.onpointerdown = event => event.stopPropagation(); this.root.onkeydown = event => event.stopPropagation();
         this.disposeTextWheel = captureFocusedTextWheel(this.root);
+        this.disposeNavigation = forwardCanvasNavigation(this.root);
         // Keep the classic canvas resize corner outside an expanding DOM widget.
         const margin = profile.fillHeight ? 4 : 0;
         this.widget = node.addDOMWidget(name, profile.widgetType, this.root, {
@@ -80,7 +81,7 @@ export class ConfigurationPanel {
     }
     dispose() {
         if (this.disposed) return;
-        this.disposed = true; this.observer?.disconnect(); this.disposeTextWheel(); this.form.dispose();
+        this.disposed = true; this.observer?.disconnect(); this.disposeTextWheel(); this.disposeNavigation(); this.form.dispose();
         if (this.frame) cancelAnimationFrame(this.frame); this.profile.onDispose?.(this.node);
     }
 }
