@@ -26,8 +26,9 @@ unavailable saved selections remain visible when restoring a workflow.
 ![Smart LM Loader: modes, model/task selection, prompt and seed](assets/nova-smart-lm-loader.png)
 
 Connect `images` for vision tasks. The local Prompt field holds extra instructions;
-`user_prompt` can override it, including with a prompt list. A connected
-`system_prompt` supplies complete Direct Chat instructions for supported models.
+`user_prompt` in `pipe_opt` can override it, including with a prompt list. Use
+Smart LM Settings or the small Smart LM Prompt Pipe node to supply both prompts.
+A nonblank `system_prompt` supplies complete Direct Chat instructions for supported models.
 
 **Local seed** uses the Seed section. Connect `seed_input` before disabling Local
 seed to use an upstream value. Small buttons provide −/+, random-each-run,
@@ -59,6 +60,8 @@ The image socket passes the source image onward; text carries the generated tags
 **Smart Detection** supports Florence/Qwen grounding and YOLO detectors. Connect
 an image, choose a model, then set a grounding prompt or detector class filter.
 Task choices appear for language-directed detection; YOLO uses its own classes.
+Use Smart Detection Settings or Smart Detection Prompt Pipe to send external
+query text through `pipe_opt`; the panel prompt remains the local fallback.
 
 ![Smart Detection with YOLO model, class filter and detection thresholds](assets/nova-smart-detection.png)
 

@@ -7,6 +7,13 @@ import secrets
 from comfy_api.latest import io
 
 from .device import normalize_device_selection
+from .settings_controls import SETTINGS_TYPES
+from .settings_pipe import (
+    LM_PROMPT_KEYS,
+    SYSTEM_PROMPT_SPEC,
+    settings_pipe_parameters,
+    validate_pipe_prompt,
+)
 
 WIDGET_TYPE = "SMARTLLM_NOVA_PANEL"
 SCALARS = {"INT", "FLOAT", "BOOLEAN", "STRING", "COMBO"}
@@ -120,6 +127,18 @@ def parse_configuration(raw, spec):
     return config
 
 
+def parse_settings_pipe(raw, spec):
+    """Validate one settings payload without changing its producer's data."""
+    params = settings_pipe_parameters(raw, spec["kind"])
+    fields = spec["fields"]
+    if spec["kind"] == "loader":
+        fields = {**fields, "system_prompt": SYSTEM_PROMPT_SPEC}
+    if params.keys() - fields.keys():
+        raise ValueError("pipe_opt contains unknown settings.")
+    return {key: (validate_pipe_prompt(value, key) if spec["kind"] == "loader" and key in LM_PROMPT_KEYS
+                  else validate_value(value, key, fields[key])) for key, value in params.items()}
+
+
 class SmartLLMPanel:
     PANEL_KIND = ""
 
@@ -132,8 +151,11 @@ class SmartLLMPanel:
         schema = cls._engine_schema()
         spec = editor_spec(schema, cls.PANEL_KIND)
         inputs = [field for field in schema.inputs
-                  if field.id not in spec["fields"] and field.id != "seed"]
+                  if field.id not in spec["fields"] and field.id != "seed"
+                  and not (cls.PANEL_KIND == "loader" and field.id in LM_PROMPT_KEYS)]
         for key in OVERRIDES[cls.PANEL_KIND]:
+            if cls.PANEL_KIND in SETTINGS_TYPES:
+                continue  # LM/detection prompts now enter through settings pipes.
             field = spec["fields"][key]
             constructor = {"FLOAT": io.Float, "INT": io.Int}.get(field["type"], io.String)
             inputs.append(constructor.Input(key, optional=True, force_input=True,
@@ -141,6 +163,10 @@ class SmartLLMPanel:
         if spec["seed"]:
             inputs.append(io.Int.Input("seed_input", optional=True, force_input=True, min=0, max=MAX_SEED,
                                        tooltip="Used when Local seed is off. Disconnecting restores the local seed."))
+        if cls.PANEL_KIND in SETTINGS_TYPES:
+            inputs.append(io.Custom(SETTINGS_TYPES[cls.PANEL_KIND]).Input(
+                "pipe_opt", optional=True,
+                tooltip="Settings and prompts override matching panel values. Missing settings use the panel."))
         inputs.append(io.String.Input("configuration", socketless=True, default=json.dumps(default_configuration(spec)),
                                       extra_dict={"widgetType": WIDGET_TYPE, "editorSpec": spec}))
         schema.inputs = inputs
@@ -156,7 +182,10 @@ class SmartLLMPanel:
 
     @classmethod
     def fingerprint_inputs(cls, configuration, **_inputs):
-        config = parse_configuration(configuration, cls._panel_spec())
+        spec = cls._panel_spec()
+        config = parse_configuration(configuration, spec)
+        if cls.PANEL_KIND in SETTINGS_TYPES:
+            config["parameters"].update(parse_settings_pipe(_inputs.get("pipe_opt"), spec))
         seed = config.get("seed")
         if seed and (seed["source"] == "local" or scalar(_inputs.get("seed_input")) is None) and seed["policy"] != "fixed":
             return float("nan")
@@ -169,7 +198,15 @@ class SmartLLMPanel:
 
             model = config["parameters"]["model" if cls.PANEL_KIND == "loader" else "model_name"]
             if model.startswith(DISPLAY_PREFIX):
-                path = resolve_text_encoder_path(model[len(DISPLAY_PREFIX):])
+                try:
+                    path = resolve_text_encoder_path(model[len(DISPLAY_PREFIX):])
+                except (OSError, ValueError):
+                    # Fingerprints receive None for unresolved links. The helper
+                    # fingerprints its selected encoder; an unavailable local
+                    # fallback must not invalidate an overriding pipe's model.
+                    if "pipe_opt" in _inputs and scalar(_inputs["pipe_opt"]) is None:
+                        return configuration
+                    raise
                 return (configuration, text_encoder_signature(path))
         return configuration
 
@@ -178,18 +215,21 @@ class SmartLLMPanel:
         spec = cls._panel_spec()
         config = parse_configuration(configuration, spec)
         params = config["parameters"]
+        if cls.PANEL_KIND in SETTINGS_TYPES:
+            params.update(parse_settings_pipe(inputs.pop("pipe_opt", None), spec))
         if cls.PANEL_KIND == "detection":
             # Older API prompts can still supply these removed sockets. The
             # saved panel values now control filtering; discard obsolete kwargs.
             for key in ("confidence", "nms_iou_threshold", "detection_filter"):
                 inputs.pop(key, None)
-        list_overrides = {}
+        # Retain direct Python/older linked-API call behavior while saved
+        # workflows move their prompt connections to the matching Prompt Pipe.
         for key in OVERRIDES[cls.PANEL_KIND]:
             value = inputs.pop(key, None)
             if scalar(value) is None:
                 continue
             if key == "user_prompt" and isinstance(value, (tuple, list)):
-                list_overrides[key] = [validate_value(item, key, spec["fields"][key]) for item in value]
+                params[key] = [validate_value(item, key, spec["fields"][key]) for item in value]
             else:
                 params[key] = validate_value(scalar(value), key, spec["fields"][key])
         seed = config.get("seed")
@@ -197,15 +237,19 @@ class SmartLLMPanel:
         if seed:
             params["seed"] = (seed_number(external_seed) if seed["source"] == "input" and external_seed is not None
                               else secrets.randbits(64) if seed["policy"] == "random" else seed_number(seed["value"]))
-        if cls.PANEL_KIND == "loader" and scalar(inputs.get("system_prompt")):
+        if cls.PANEL_KIND == "loader":
+            legacy_system = scalar(inputs.pop("system_prompt", None))
+            if legacy_system is not None:
+                params["system_prompt"] = validate_pipe_prompt(legacy_system, "system_prompt")
+        if cls.PANEL_KIND == "loader" and params.get("system_prompt", "").strip():
             from .model_registry import get_model_entry
             entry = get_model_entry(params["model"]) or {}
             if entry.get("family") != "Florence" and entry.get("backend") != "wd14":
                 params["task"] = "Direct Chat"
                 params["multi_task_mode"] = False
         if cls._engine_schema().is_input_list:
-            params = {key: [value] for key, value in params.items()}
-            params.update(list_overrides)
+            params = {key: value if key == "user_prompt" and isinstance(value, list) else [value]
+                      for key, value in params.items()}
         result = cls._execute_engine(**params, **inputs)
         if seed:
             result.ui = {**(result.ui or {}), "nova_seed": [str(scalar(params["seed"]))]}

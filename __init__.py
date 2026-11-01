@@ -73,6 +73,10 @@ class SmartLLMExtension(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         if _CONFLICTS:
             return []
+        from .py.RvConfig_SmartSettings import (
+            RvConfig_SmartDetectionSettings,
+            RvConfig_SmartLMSettings,
+        )
         from .py.RvConversion_DetectionToBboxes import (
             RvConversion_DetectionToBboxes,
         )
@@ -88,6 +92,8 @@ class SmartLLMExtension(ComfyExtension):
         from .py.RvLoader_SmartLMLoader import (
             RvLoader_SmartModelLoader_LM,
         )
+        from .py.RvPipe_SmartDetectionPrompt import RvPipe_SmartDetectionPrompt
+        from .py.RvPipe_SmartLMPrompt import RvPipe_SmartLMPrompt
 
         return [
             RvLoader_SmartModelLoader_LM,
@@ -95,6 +101,10 @@ class SmartLLMExtension(ComfyExtension):
             RvConversion_DetectionToBboxes,
             RvConversion_SplitMiniMaxMusic3,
             RvConversion_SplitYuE2,
+            RvConfig_SmartLMSettings,
+            RvConfig_SmartDetectionSettings,
+            RvPipe_SmartLMPrompt,
+            RvPipe_SmartDetectionPrompt,
         ]
 
 

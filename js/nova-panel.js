@@ -4,6 +4,7 @@ import { ensurePanelStyle } from './nova-panel-controls.js';
 import { PanelState } from './nova-panel-state.js';
 import { PanelForm } from './nova-panel-form.js';
 import { installSeedQueueHook } from './nova-panel-seed-queue.js';
+import { migrateSerializedPrompts } from './nova-prompt-migration.js';
 const WIDGET = 'SMARTLLM_NOVA_PANEL', EDITOR = 'SmartLLMNova.panel', controllers = new WeakMap();
 const DETECTION_PANEL_ONLY = new Set(['confidence', 'nms_iou_threshold', 'detection_filter']);
 function removeDetectionOverrides(node) {
@@ -21,6 +22,7 @@ app.registerExtension({
             nodeId: `${name} [SmartLLM Nova]`, editorKey: EDITOR,
         });
     },
+    beforeConfigureGraph(workflow) { migrateSerializedPrompts(workflow); },
     getCustomWidgets() {
         return { [WIDGET](node, name, data) {
             const controller = new ConfigurationPanel(node, name, data[1], {

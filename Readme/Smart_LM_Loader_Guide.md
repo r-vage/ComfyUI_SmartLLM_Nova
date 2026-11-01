@@ -174,15 +174,20 @@ Panel values are saved with the workflow. Shared generation defaults are updated
 | Input | Type | Description |
 |-------|------|-------------|
 | **images** | IMAGE | Optional. Image input for vision tasks and WD14 |
-| **user_prompt** | STRING | Optional prompt override; supports prompt lists. Empty text is a valid override |
 | **seed_input** | INT | Optional unsigned 64-bit seed, used when Local seed is disabled |
-| **system_prompt** | STRING | Optional complete instruction override. Connecting text switches the node to Direct Chat and bypasses the selected task's default prompt template |
+| **pipe_opt** | Settings | Optional Smart LM Settings or Smart LM Prompt Pipe output; carries settings and user/system prompts. See [subgraph settings](Nova_Panels.md#native-settings-and-subgraphs). |
 
-The connected `system_prompt` is not appended to the selected task. It replaces
+Connect external `user_prompt` and `system_prompt` strings to **Smart LM Prompt
+Pipe**, then connect its `settings` output to `pipe_opt`. It works without native
+settings widgets, or passes through **Smart LM Settings** while overriding its
+prompts. User prompt lists are supported with one shared system instruction.
+Unconnected prompt inputs preserve incoming values; empty text is an explicit override.
+
+A nonblank `system_prompt` in the pipe replaces
 that task's built-in instructions, so the provided text must be self-contained:
 include the model's role, the complete objective, any rules or constraints, and
 the required output format. In this mode, `user_prompt` is the corresponding user
-message or source material. Leave `system_prompt` disconnected when you want to
+message or source material. Leave `system_prompt` empty or absent when you want to
 use a predefined task such as Detailed Description, Wan/LTX/MiniMax H3 prompting,
 or Song Lyrics.
 
@@ -646,7 +651,7 @@ no soundtrack produces `non_diegetic_music: N/A`. This does not remove dialogue,
 ambience, or action sounds from `overall_soundscape` unless silence is also
 requested.
 An empty **MiniMax H3 Scene** prompt instead activates story mode and always creates
-an appropriate background score. Connecting a nonblank custom `system_prompt`
+an appropriate background score. Supplying a nonblank custom `system_prompt` through the pipe
 disables automatic story mode and uses the custom instructions. Workflows saved
 with former H3 `5s` or `15s` labels are migrated automatically, although those
 retired labels are no longer shown in the task dropdown.
@@ -666,17 +671,17 @@ Disable the **Training** button when a small-context model needs a shorter promp
 
 Here `user_prompt` is the creative source rather than an optional correction.
 The task's built-in system prompt turns that source into singable, consistently
-formatted lyrics; connecting a separate `system_prompt` is unnecessary unless
+formatted lyrics; supplying a custom `system_prompt` is unnecessary unless
 you intentionally want to replace the entire task behavior.
 
-### Direct Chat with a Connected System Prompt
+### Direct Chat with a Prompt Pipe
 
-1. Connect a STRING containing the complete custom instructions to `system_prompt`
+1. Connect a STRING containing the complete custom instructions to **Smart LM Prompt Pipe → system_prompt**
 2. Include every important role, goal, constraint, and output-format rule in that text
-3. Put the request, question, or source content in `user_prompt`
-4. Queue Prompt
+3. Connect the request, question, or source content to its `user_prompt` input, or keep using the loader's local Prompt field
+4. Connect the pipe's `settings` output to the loader's `pipe_opt`, then queue the prompt
 
-The node changes to **Direct Chat** while the connection is present. The selected
+Supported models use **Direct Chat** while the pipe supplies nonblank system instructions. The selected
 task's system prompt is not combined with the connected text, so omitted rules
 cannot be inherited from that task.
 

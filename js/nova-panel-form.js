@@ -3,12 +3,11 @@ import { app, api } from './comfy/index.js';
 import { element, button, SearchMenu, groupedModelOptions } from './nova-panel-controls.js';
 import { TextFieldSizes } from './nova-panel-text-layout.js';
 import { seedControls } from './nova-panel-seed-controls.js';
-import { fetchModelEntry, fetchModelList, fetchDetectionModelList, fetchTaskList, expireMetadataCache } from './smartllm-metadata.js';
+import { fetchModelEntry, fetchModelList, fetchDetectionModelList, fetchTaskList, fetchModelTasks, expireMetadataCache } from './smartllm-metadata.js';
 import { onSmartLLMRegistryChanged } from './smartllm-registry-events.js';
 
 const LABELS = { memory_cleanup: 'Cleanup', cleanup: 'Cleanup', keep_model_loaded: 'Keep loaded', multi_task_mode: 'Multi-task', use_few_shot_training: 'Training', nsfw_training: 'NSFW', use_advanced: 'Sampling', enable_preview_boxes: 'Preview boxes', get_mask_from_image: 'From image', combine_masks: 'Combine', invert: 'Invert', user_prompt: 'Prompt', user_input: 'Prompt / classes', model_name: 'Model', song_json: 'Song JSON', nms_iou_threshold: 'NMS IoU', detection_filter: 'Max area ratio', replace_underscore: 'Remove underscores', char_threshold: 'Character threshold' };
 const clean = values => (values ?? []).map(value => typeof value === 'string' ? value : value.display_name).filter(value => value && !value.startsWith('__SEP__') && !value.startsWith('─'));
-const DET_TASKS = { Florence: ['Caption to Phrase Grounding', 'Region Caption', 'Dense Region Caption', 'Region Proposal', 'Referring Expression Segmentation', 'OCR With Region', 'DocVQA'], Qwen: ['Caption to Phrase Grounding', 'Region Caption'] };
 
 export class PanelForm {
     constructor(controller) {
@@ -28,9 +27,7 @@ export class PanelForm {
         if (!this.modelKey || this.controller.disposed || this.controller.invalid) return;
         const model = this.params[this.modelKey], sequence = ++this.sequence;
         const entry = await fetchModelEntry(model);
-        const tasks = this.spec.kind === 'loader' && entry?.backend !== 'wd14'
-            ? await fetchTaskList(entry?.has_vision ?? true, entry?.family ?? '')
-            : entry?.backend === 'comfyui' && entry.has_vision ? DET_TASKS.Qwen : DET_TASKS[entry?.family];
+        const tasks = await fetchModelTasks(this.spec.kind, entry);
         const textTasks = this.spec.kind === 'loader' ? await fetchTaskList(false, '') : null;
         if (sequence !== this.sequence || this.controller.disposed || this.controller.invalid || this.params[this.modelKey] !== model) return;
         this.entry = entry; this.model = model; this.tasks = clean(tasks); this.textTasks = clean(textTasks);
@@ -48,6 +45,10 @@ export class PanelForm {
         const focused = root.contains(document.activeElement) ? document.activeElement.dataset.field : null;
         this.menu.close(); this.textSizes.disconnect();
         const content = element('div', 'sln-panel-content'), kind = this.spec.kind;
+        if (this.connected('pipe_opt')) content.append(element('div', 'sln-panel-note',
+            kind === 'loader'
+                ? 'Connected settings and prompts override matching values below. Missing settings use these local values. Use Smart LM Prompt Pipe to connect external prompt text.'
+                : 'Connected settings and query text override matching values below. Missing settings use these local values. Use Smart Detection Prompt Pipe to connect external query text.'));
         const entry = this.model === this.params[this.modelKey] ? this.entry : null;
         const backend = entry?.backend, family = entry?.family, wd = backend === 'wd14', yolo = backend === 'yolo', florence = family === 'Florence';
         if (kind === 'loader') this.bar(content, ['memory_cleanup', 'keep_model_loaded', ...(!wd ? ['multi_task_mode', 'use_few_shot_training', 'nsfw_training', 'use_advanced'] : [])], true);
@@ -94,7 +95,7 @@ export class PanelForm {
             else body.append(element('div', 'sln-panel-note', 'Using the connected seed.'));
             if (this.state.editor.lastSeed != null) body.append(element('div', 'sln-panel-note', `Last run: ${this.state.editor.lastSeed}`));
         });
-        if (this.connected('system_prompt')) content.append(element('div', 'sln-panel-note', 'Connected system instructions use Direct Chat for supported models.'));
+        if (kind === 'loader' && this.connected('pipe_opt')) content.append(element('div', 'sln-panel-note', 'Nonblank system instructions in the pipe use Direct Chat for supported models.'));
         if (this.status) content.append(element('div', 'sln-panel-note', this.status));
         root.replaceChildren(content);
         if (focused) [...root.querySelectorAll('[data-field]')].find(el => el.dataset.field === focused)?.focus({ preventScroll: true });

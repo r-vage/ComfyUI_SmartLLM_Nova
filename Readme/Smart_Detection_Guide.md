@@ -112,13 +112,24 @@ and **Hardware** for device settings. Collapsing a section does not disable it.
 | Input | Type | Description |
 |-------|------|-------------|
 | **image** | IMAGE | Image to detect objects in (required) |
-| **user_input** | STRING | Optional prompt or class-filter override |
 | **seed_input** | INT | Optional unsigned 64-bit seed, used when Local seed is disabled |
+| **pipe_opt** | Settings | Optional Smart Detection Settings or Smart Detection Prompt Pipe output, carrying model controls and query/class-filter text |
+
+Use **Smart Detection Settings** for native controls, including a promotable
+`user_input` widget on a subgraph. For external strings without native widgets,
+connect **Smart Detection Prompt Pipe → settings** to the detector's `pipe_opt`.
+The IO helper can also pass through native settings while overriding their query.
+An unconnected query preserves the incoming value; empty text explicitly clears it.
+Without a query in the pipe, the panel's saved prompt remains the fallback.
+
+Saved workflows automatically move former direct `user_input` connections through
+the IO helper, including subgraph boundaries. Save after loading to keep the new
+wiring. API templates should supply query text through the pipe.
 
 Confidence, NMS overlap and maximum region area are controlled in the **Detection**
-section. Existing workflows keep their saved panel values and remaining connections;
+section or through native settings. Existing workflows keep their saved panel values and remaining connections;
 the three former override sockets and their links are removed when loaded. Older
-API prompts may still contain those inputs, but the node uses its panel values.
+API prompts may still contain those inputs, but the node uses its panel/pipe values.
 
 ### Outputs
 

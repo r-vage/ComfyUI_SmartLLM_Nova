@@ -52,11 +52,11 @@ from ..core.sml.model_acquisition import (
 from ..core.sml.model_registry import (
     get_detection_model_list,
     get_model_entry,
-    is_model_separator,
     load_defaults,
     save_defaults,
 )
 from ..core.sml.panel_configuration import SmartLLMPanel
+from ..core.sml.settings_controls import settings_fields
 from ..core.sml.tasks import (
     TASK_BY_NAME,
     get_detection_task_names,
@@ -714,15 +714,10 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
     @classmethod
     def _engine_schema(cls):
         models = get_detection_model_list()
-        first_model = next(
-            (m for m in models if not is_model_separator(m)),
-            models[0] if models else "",
-        )
         defaults = load_defaults()
         det_tasks = get_detection_task_names()
-        quant_placeholders = defaults.get(
-            "quantizations", ["Q4_K_M", "Q5_K_M", "Q6_K", "Q8_0"]
-        )
+
+        main_fields = settings_fields("detection", models=models, task_names=det_tasks, defaults=defaults)
 
         return io.Schema(
             node_id="Smart Detection [SmartLLM Nova]",
@@ -752,70 +747,14 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
                     tooltip="Superimpose colored bounding box outlines and text labels onto the output preview image.",
                 ),
                 # ── Model selection ──────────────────────────────────────
-                io.Combo.Input(
-                    "model_name",
-                    options=models,
-                    default=first_model,
-                    tooltip="Choose the object detection or VLM grounding model to load.\n"
-                    "Suffixes indicate the backend engine (no suffix=Transformers, -GGUF=native llama-cpp-python, "
-                    "-llama.cpp=llama.cpp Docker).",
-                ),
-                io.Combo.Input(
-                    "quantization",
-                    options=quant_placeholders,
-                    default="Q4_K_M",
-                    tooltip="Choose GGUF quantization precision. Lower bits (e.g. Q4_K_M) use less VRAM but lose accuracy. "
-                    "Higher bits (e.g. Q8_0) are more accurate but demand more VRAM. Applies to native GGUF and llama.cpp Docker models.",
-                ),
-                io.Combo.Input(
-                    "task",
-                    options=det_tasks,
-                    default=(
-                        det_tasks[0] if det_tasks else "Caption to Phrase Grounding"
-                    ),
-                    tooltip="Type of detection task to run:\n"
-                    "• Caption to Phrase Grounding: Locates objects matching user_input query.\n"
-                    "• Referring Expression Segmentation: Generates segmented mask regions for specified objects.\n"
-                    "• Region Caption: Detects objects and labels them with descriptions.\n"
-                    "• YOLO runs object detection automatically.",
-                ),
-                io.String.Input(
-                    "user_input",
-                    default="",
-                    multiline=True,
-                    tooltip="Input query for detection:\n"
-                    "• Phrase grounding: Separate targets with commas, semicolons or newlines (e.g. 'eye, breast'). "
-                    "Each target runs a separate query using the same loaded model; results are combined.\n"
-                    "• YOLO: Semicolon-separated target classes to filter (e.g. 'person;car;backpack'). Leave empty to output all classes.",
-                ),
+                main_fields["model_name"],
+                main_fields["quantization"],
+                main_fields["task"],
+                main_fields["user_input"],
                 # ── Detection parameters ──────────────────────────────
-                io.Float.Input(
-                    "confidence",
-                    default=float(defaults.get("confidence", 0.5)),
-                    min=0.0,
-                    max=1.0,
-                    step=0.1,
-                    tooltip="Minimum confidence score (0.0 to 1.0) required for a detection to be kept. "
-                    "Higher values reduce false positives, lower values capture more candidate objects.",
-                ),
-                io.Float.Input(
-                    "nms_iou_threshold",
-                    default=float(defaults.get("nms_iou_threshold", 0.5)),
-                    min=0.0,
-                    max=1.0,
-                    step=0.1,
-                    tooltip="Non-Maximum Suppression (NMS) intersection-over-union threshold. "
-                    "Lower values (e.g. 0.3) aggressively merge overlapping boxes; higher values (e.g. 0.7) keep separate but close detections.",
-                ),
-                io.Float.Input(
-                    "detection_filter",
-                    default=float(defaults.get("detection_filter", 0.8)),
-                    min=0.0,
-                    max=1.0,
-                    step=0.1,
-                    tooltip="Max ratio of bounding box area to total image area. "
-                    "Detections covering more than this ratio (e.g. 0.8) are ignored to filter out useless full-image bounding boxes.",
-                ),
+                main_fields["confidence"],
+                main_fields["nms_iou_threshold"],
+                main_fields["detection_filter"],
                 io.Int.Input(
                     "drop_size",
                     default=int(defaults.get("drop_size", 10)),
@@ -841,15 +780,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
                     step=1,
                     tooltip="Expand (positive values) or shrink (negative values) the boundaries of the output mask by a set number of pixels.",
                 ),
-                io.Int.Input(
-                    "select_index",
-                    default=int(defaults.get("select_index", -1)),
-                    min=-1,
-                    max=999,
-                    step=1,
-                    tooltip="Select a single detection: set to -1 to output all detections merged; "
-                    "set to 0, 1, 2... to output only the N-th detection (useful for isolating objects).",
-                ),
+                main_fields["select_index"],
                 # ── Advanced widgets (hidden by default) ──────────────
                 io.Combo.Input(
                     "device",

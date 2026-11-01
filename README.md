@@ -1,7 +1,7 @@
 # ComfyUI SmartLLM Nova
 
 The Nova editors use compact themed panels in classic ComfyUI and Nodes 2.0.
-Find the five nodes under **🌒 SmartLLM Nova**. See [Nova panels](Readme/Nova_Panels.md)
+Find the panels and native settings helpers under **🌒 SmartLLM Nova**. See [Nova panels](Readme/Nova_Panels.md)
 for sections, connection overrides and seed handling. The design is inspired by
 DaSiWa and adapted from the Eclipse Nova panel approach.
 
@@ -63,12 +63,17 @@ tagger models show their relevant inputs.
 The selected task loads its task-specific system prompt automatically, so
 `user_prompt` is normally empty for tasks such as Detailed Description. Use it
 only for additional information, a question, or constraints that are not already
-expressed by the task. Connecting `system_prompt` is an explicit override: it
-switches the node to Direct Chat and bypasses the default task prompt templates.
+expressed by the task. Supplying a nonblank `system_prompt` through `pipe_opt`
+switches supported models to Direct Chat and bypasses the default task prompt templates.
 The connected text becomes the complete system instruction, so it must contain
 every important role, objective, constraint, and output-format requirement.
 `user_prompt` then supplies the user message or source material for that custom
 instruction.
+
+Use **Smart LM Settings** for native user/system prompt widgets, or connect
+STRING outputs to **Smart LM Prompt Pipe** and wire its `settings` output into
+the loader's `pipe_opt`. The prompt-only node can also pass through native
+settings while overriding their prompts.
 
 The image input is optional for text-only tasks. Output sockets return generated
 text plus an image when the selected task supports one.
@@ -245,15 +250,22 @@ preserved.
 
 | Node | Inputs | Outputs | Purpose |
 | --- | --- | --- | --- |
-| `Smart LM Loader [SmartLLM Nova]` | optional images, user/system prompt and seed overrides; panel configuration | image, text | Run registered vision-language, text, or WD14 models |
-| `Smart Detection [SmartLLM Nova]` | image; prompt, confidence, NMS, area and seed overrides; panel configuration | image, mask, SEGS, data | Run Florence/Qwen grounding or YOLO detection |
+| `Smart LM Loader [SmartLLM Nova]` | optional images, seed and `pipe_opt`; panel configuration | image, text | Run registered vision-language, text, or WD14 models |
+| `Smart Detection [SmartLLM Nova]` | image; optional seed and `pipe_opt` for settings/query text; panel configuration | image, mask, SEGS, data | Run Florence/Qwen grounding or YOLO detection |
+| `Smart LM Settings [SmartLLM Nova]` | native model, task, quantization, user/system prompts and token controls | settings | Supply LM settings through `pipe_opt`, including promoted subgraph widgets |
+| `Smart LM Prompt Pipe [SmartLLM Nova]` | optional user/system prompt strings and existing settings pipe | settings | Supply external prompts through `pipe_opt` without native settings widgets |
+| `Smart Detection Settings [SmartLLM Nova]` | native model, task, quantization, query and detection controls | settings | Supply detection settings through `pipe_opt`, including promoted subgraph widgets |
+| `Smart Detection Prompt Pipe [SmartLLM Nova]` | optional query/class-filter string and existing settings pipe | settings | Supply external query text through `pipe_opt` with or without native settings |
 | `Detection to Bboxes [SmartLLM Nova]` | image, optional detection data, mask controls | mask, BBOXES | Convert Smart Detection data or image regions into masks and boxes |
 | `Split MiniMax Music 3 [SmartLLM Nova]` | optional song_json override; panel text | caption, lyrics (STRING) | Validate and split song JSON for the native Music 3 encoder |
 | `Split YuE2 [SmartLLM Nova]` | optional song_json override; panel text | style, lyrics (STRING) | Validate and split song JSON for both native YuE2 generators |
 
-Nova owns all five implementations and does not require Eclipse at runtime.
+Nova owns these implementations and does not require Eclipse at runtime.
 Model nodes appear under **🌒 SmartLLM Nova → Loader**, and converters under
-**🌒 SmartLLM Nova → Conversion**. Nova uses its own node IDs; workflows made
+**🌒 SmartLLM Nova → Conversion**. Native helpers appear under **🌒 SmartLLM Nova → Settings**;
+the prompt-only helpers are under **🌒 SmartLLM Nova → IO**.
+See [subgraph settings](Readme/Nova_Panels.md#native-settings-and-subgraphs) for wiring and precedence.
+Nova uses its own node IDs; workflows made
 with the original pack need explicit node replacement to use Nova.
 
 ## Supported backends and model families
@@ -298,7 +310,7 @@ Docker backends require Docker separately. See the
 
 ## Compatibility and ownership
 
-- SmartLLM registers exactly the five nodes listed above and owns the
+- SmartLLM registers the nine nodes listed above and owns the
   `/smartllm-nova/...` API namespace, registries, Registry Manager, model-acquisition
   state, Docker configuration, and private `config.json`.
 - Its model path, retry policy, log level, Hugging Face and ModelScope

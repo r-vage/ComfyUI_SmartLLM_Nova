@@ -46,6 +46,19 @@ export function fetchTaskList(hasVision, family = '') {
     return request(`/smartllm-nova/task_list?has_vision=${hasVision}${familyQuery}`, [], true);
 }
 
+const DETECTION_TASKS = {
+    Florence: ['Caption to Phrase Grounding', 'Region Caption', 'Dense Region Caption', 'Region Proposal', 'Referring Expression Segmentation', 'OCR With Region', 'DocVQA'],
+    Qwen: ['Caption to Phrase Grounding', 'Region Caption'],
+};
+
+// Panels and native settings must offer the same tasks for the selected model.
+export async function fetchModelTasks(kind, entry) {
+    if (['wd14', 'yolo'].includes(entry?.backend)) return [];
+    if (kind === 'loader') return fetchTaskList(entry?.has_vision ?? true, entry?.family ?? '');
+    return entry?.backend === 'comfyui' && entry.has_vision
+        ? DETECTION_TASKS.Qwen : DETECTION_TASKS[entry?.family];
+}
+
 export function fetchModelList() { return request('/smartllm-nova/model_list', [], true); }
 export function fetchDetectionModelList() { return request('/smartllm-nova/detection/model_list', []); }
 

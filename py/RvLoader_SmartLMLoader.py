@@ -49,13 +49,13 @@ from ..core.sml.model_acquisition import (
 from ..core.sml.model_registry import (
     get_model_entry,
     get_model_list,
-    is_model_separator,
     load_defaults,
     save_defaults,
 )
 from ..core.sml.music3 import TASK_NAME as MUSIC3_TASK
 from ..core.sml.music3 import resolve_source as resolve_music3_source
 from ..core.sml.panel_configuration import SmartLLMPanel
+from ..core.sml.settings_controls import settings_fields
 from ..core.sml.song import active_source, generate_song
 from ..core.sml.tasks import (
     TASK_BY_NAME,
@@ -905,7 +905,7 @@ def _generate_for_family(
         # connected system_prompt and no user input.
         if not text_content.strip() and not get_system_prompt(task_name):
             raise ValueError(
-                "LLM requires a prompt. Wire a string into 'user_prompt' or type one."
+                "LLM requires a prompt. Use Smart LM Prompt Pipe or type in the loader's Prompt field."
             )
 
         # Replace underscores for tag conversion tasks
@@ -1408,20 +1408,13 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
     @classmethod
     def _engine_schema(cls):
         models = get_model_list()
-        first_model = next(
-            (m for m in models if not is_model_separator(m)),
-            models[0] if models else "",
-        )
         defaults = load_defaults()
 
         # Task list — full superset for schema validation (JS filters at runtime)
         task_names = get_task_names(has_vision=True, include_all_families=True)
         task_names_none = ["None"] + task_names
 
-        # GGUF quantization list from defaults (user-editable, JS refreshes on model change)
-        quant_placeholders = defaults.get(
-            "quantizations", ["Q4_K_M", "Q5_K_M", "Q6_K", "Q8_0"]
-        )
+        main_fields = settings_fields("loader", models=models, task_names=task_names, defaults=defaults)
 
         return io.Schema(
             node_id="Smart LM Loader [SmartLLM Nova]",
@@ -1432,34 +1425,10 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
             "multi-task chaining, and WD14 tagger support.",
             inputs=[
                 # ── Model selection ───────────────────────────────────
-                io.Combo.Input(
-                    "model",
-                    options=models,
-                    default=first_model,
-                    tooltip="Choose the language, vision, or tagging model to load.\n"
-                    "Suffixes indicate the backend engine:\n"
-                    "• (no suffix) - Hugging Face Transformers (local, PyTorch)\n"
-                    "• -GGUF - native llama-cpp-python engine\n"
-                    "• -llama.cpp - llama.cpp Docker server using the selected GGUF file\n"
-                    "• -vLLM / -SGLang / -Ollama - other Docker backends\n"
-                    "• ComfyUI: - compatible local text encoder files, using ComfyUI's native generation\n"
-                    "• -WD14 - WD14 tagger for anime-style image tagging.",
-                ),
-                io.Combo.Input(
-                    "quantization",
-                    options=quant_placeholders,
-                    default="Q4_K_M",
-                    tooltip="Choose GGUF quantization precision. Lower bits (e.g. Q4_K_M) use less VRAM but lose accuracy. "
-                    "Higher bits (e.g. Q8_0) are more accurate but demand more VRAM. Applies to native GGUF and llama.cpp Docker models.",
-                ),
+                main_fields["model"],
+                main_fields["quantization"],
                 # ── Tasks ─────────────────────────────────────────────
-                io.Combo.Input(
-                    "task",
-                    options=task_names,
-                    default="Detailed Description",
-                    tooltip="The primary task to run. Determines the prompt template, system instructions, and training examples. "
-                    "Note: Vision tasks (VLM) require feeding an image into the 'images' input slot.",
-                ),
+                main_fields["task"],
                 io.Combo.Input(
                     "task_2",
                     options=task_names_none,
@@ -1479,31 +1448,9 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                     tooltip="Optional fourth task in a multi-task chain. Runs in sequence using the output of the third task as context.",
                 ),
                 # ── Prompt / context ──────────────────────────────────
-                io.String.Input(
-                    "user_prompt",
-                    default="",
-                    multiline=True,
-                    tooltip="Your custom instructions, question, or prompt for the model. "
-                    "Type text directly or wire an upstream string. Combined with the selected task prompt.",
-                ),
-                io.Int.Input(
-                    "context_size",
-                    default=int(defaults.get("context_size", 8192)),
-                    min=512,
-                    max=131072,
-                    step=512,
-                    tooltip="Maximum context window (tokens) allocated for the model. "
-                    "Determines how much history, text, and image tokens the model can process at once. Larger sizes use more VRAM.",
-                ),
-                io.Int.Input(
-                    "max_tokens",
-                    default=int(defaults.get("image_max_tokens", 2048)),
-                    min=1,
-                    max=32768,
-                    step=1,
-                    tooltip="The maximum number of tokens the model is allowed to generate in its response. "
-                    "Lower limits prevent long-winded answers and save generation time.",
-                ),
+                main_fields["user_prompt"],
+                main_fields["context_size"],
+                main_fields["max_tokens"],
                 io.Combo.Input(
                     "attention_mode",
                     options=["auto", "flash_attention_2", "sdpa", "eager"],

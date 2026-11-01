@@ -1,3 +1,37 @@
+## 2026-11-01
+
+### Version: 1.1.9
+
+- **Feat**
+  - Add native Smart LM Settings and Smart Detection Settings helpers with optional `pipe_opt` inputs on their processing panels. Promote model, task, prompts and main controls onto subgraphs, or pass settings through a subgraph input. Preserve local fallback values, advanced controls and existing seed behavior.
+  - Refresh native model-dependent choices independently for each subgraph instance, including nested hosts and workflow reloads. Validate settings payloads and track native text-encoder file changes for cached execution.
+  - Carry LM user/system prompts through `pipe_opt` and add both native prompt widgets and a compact Smart LM Prompt Pipe for external strings. Use it alone or after native settings; preserve prompt lists, explicit empty values and Direct Chat behavior.
+  - Carry Detection queries through `pipe_opt` and add Smart Detection Prompt Pipe for external query/class-filter strings, usable alone or after native settings. Preserve empty overrides, first-string behavior and promoted subgraph query widgets.
+- **Breaking**
+  - Remove the LM Loader's individual prompt sockets and Detection's direct `user_input` socket. Saved UI workflows automatically move their connections through the matching Prompt Pipe, including subgraph links; API templates should supply prompts through the pipe.
+- **Docs**
+  - Document native settings, prompt composition, subgraph wiring, override priority and saved-workflow migration.
+- **Changed files**
+  - README.md
+  - Readme/Nova_Panels.md
+  - Readme/Smart_LM_Loader_Guide.md
+  - Readme/Smart_Detection_Guide.md
+  - Readme/Visual_Tour.md
+  - core/sml/panel_configuration.py
+  - core/sml/settings_controls.py
+  - core/sml/settings_pipe.py
+  - js/nova-prompt-migration.js
+  - js/nova-native-settings.js
+  - js/nova-panel-form.js
+  - js/nova-panel.js
+  - js/smartllm-metadata.js
+  - py/RvConfig_SmartSettings.py
+  - py/RvLoader_SmartDetection.py
+  - py/RvLoader_SmartLMLoader.py
+  - py/RvPipe_SmartLMPrompt.py
+  - py/RvPipe_SmartDetectionPrompt.py
+  - pyproject.toml
+
 ## 2026-10-29
 
 ### Version: 1.1.8
