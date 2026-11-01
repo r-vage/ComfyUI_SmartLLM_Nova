@@ -1,5 +1,22 @@
 ## 2026-11-01
 
+### Version: 1.1.10
+
+- **Fix**
+  - Give Simple, Detailed and Ultra Detailed Description four example pairs each in both Standard and NSFW profiles, with clearer hand/leg placement, support points, actions and interactions.
+  - Align examples and task instructions with their intended detail levels, distinguish visible anatomy from covered or cropped areas, and discourage invented contact or motion. Upgrade recognized bundled entries while preserving customized prompts and examples.
+- **Docs**
+  - Clarify description lengths, example counts and the role of text demonstrations in the loader guide.
+- **Changed files**
+  - .defaults/config/llm_few_shot_training.json.example
+  - .defaults/config/llm_few_shot_training_nsfw.json.example
+  - .defaults/config/system_prompts.json.example
+  - Readme/Smart_LM_Loader_Guide.md
+  - core/migration.py
+  - pyproject.toml
+
+## 2026-11-01
+
 ### Version: 1.1.9
 
 - **Feat**

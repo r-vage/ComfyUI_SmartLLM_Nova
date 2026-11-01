@@ -17,6 +17,9 @@ _LOG_PREFIX = "Defaults"
 _MANIFEST_NAME = ".manifest.json"
 _DEFAULT_VALUE_UPGRADES = {
     Path("config/system_prompts.json"): {
+        "Simple Description": "041c44d1996e1c159dcc9ea5151d0bded5a1c752ed3427a3de088bc34ed3adc0",
+        "Detailed Description": "82a43e6b8c0d2e81d249b8109c1d1f9a462d57e5ba474efe2e269600f0c9ae4c",
+        "Ultra Detailed Description": "707b8e6f4a12797c35a6a92eae6caafa9ad20c21904e9af605a611553622efc3",
         "MiniMax Music 3": (
             "6db71d6f7fd9890a6f75127e1e290cbe72988d5b6d39d99812ee4a3cd738e739",
             "aba0293889df90a05a4a2f14c083ec10d22b75f37b3f2fa3a173dc0bd2253701",
@@ -50,6 +53,9 @@ _DEFAULT_VALUE_UPGRADES = {
         "LTX 2.3 I2V": "dbf829e66bc2232fb5dd542c069f804b81641e2add4cc3233c9d8def4b705eeb",
     },
     Path("config/llm_few_shot_training.json"): {
+        "simple_description": "f38b74170016abe20aa34caa041f647f6519f3725b6d63bbc1fd0c1c9279b55b",
+        "detailed_description": "8d5d08dd2a4a59dde5d9205fb9195e4f37714989078fa486b5b7d09c7a0ba541",
+        "ultra_detailed_description": "fb60bbcb8d2126423a055fa1addf16204775f4948d0a28a0c98fd1066e2bd3c7",
         "minimax_music_3": (
             "eb4dd0d3053de1b777d09b24fea6ef467976fbe0a3c0c5215e94705c4364cc16",
             "de9b9b0554e455f994fbc2160d9b4b87f1f21764d19dbf65c18985449ebd7919",
@@ -79,6 +85,9 @@ _DEFAULT_VALUE_UPGRADES = {
         "ltx_2.3_i2v": "ddddcb90ebc4292ae937be87f8fe1d542e6ab55416fc777a56dd44208ea4a397",
     },
     Path("config/llm_few_shot_training_nsfw.json"): {
+        "simple_description": "7d9c53aff8e0665d301dcc9828dabf2d28e2a5d90e0eeea346ca32548400f6ba",
+        "detailed_description": "473142323f9a62e263cd2beffad5d6030bfb65f1fcfce95ad643df2e3da82f9a",
+        "ultra_detailed_description": "99438a74d7201070b5fea1a70c1294071864751b77664c8fb77c56d3014c5b8b",
         "minimax_music_3": (
             "eb4dd0d3053de1b777d09b24fea6ef467976fbe0a3c0c5215e94705c4364cc16",
             "de9b9b0554e455f994fbc2160d9b4b87f1f21764d19dbf65c18985449ebd7919",

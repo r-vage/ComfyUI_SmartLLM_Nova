@@ -463,14 +463,22 @@ ONNX Runtime for SmilingWolf WD14 tagger models.
 | Task | Description |
 |------|-------------|
 | **Simple Description** | Brief one-sentence description |
-| **Detailed Description** | Paragraph-length description |
-| **Ultra Detailed Description** | Comprehensive description |
+| **Detailed Description** | 2–3 sentences covering pose, action, and relevant setting |
+| **Ultra Detailed Description** | One or two paragraphs with detailed limb placement, interactions, and visible surroundings |
 | **Cinematic Description** | Film/cinematography style description |
 | **Image Analysis** | Technical analysis |
 | **Detailed Analysis** | Analytical breakdown |
 | **Tags** | Generate comma-separated tags |
 | **Video Summary** | Summarize video frames (Qwen only) |
 | **OCR** | Extract text from image |
+
+Simple, Detailed, and Ultra Detailed each have four example pairs in both the
+Standard and NSFW training profiles. Simple stays concise; Detailed adds spatial
+relationships; Ultra Detailed describes visible limbs, support points, and
+interactions more fully. Their examples distinguish visible body parts from
+covered or cropped areas and prioritize what the subject is doing. These are
+text demonstrations of caption style, not image-based training or model updates.
+Updates replace recognized bundled entries while preserving customized entries.
 
 ### Vision Tasks (Florence-only)
 
