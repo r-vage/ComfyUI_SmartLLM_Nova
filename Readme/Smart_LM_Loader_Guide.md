@@ -94,8 +94,8 @@ The **Smart LM Loader** is a unified node for loading and running vision-languag
 | **8 Backends** | Transformers, GGUF, vLLM, SGLang, Ollama, llama.cpp, YOLO, WD14 |
 | **Multi-Task Chaining** | Chain 2–4 sequential tasks with output→input flow |
 | **Few-Shot Training** | Per-task example pairs (user-editable in `config/`), toggleable via **Training** button |
-| **Editable System Prompts** | Customize per-task instructions in `config/system_prompts.json` |
-| **Mode Bar** | Cleanup, Keep loaded, Multi-task, Training, Standard/NSFW, Sampling, Local seed |
+| **Editable System Prompts** | Customize per-task instructions in `config/system_prompts.json` (Standard) or `config/system_prompts_nsfw.json` (NSFW) |
+| **Mode Bar** | Cleanup, Keep loaded, Multi-task, Training, Standard/NSFW, Sampling, Thinking (native encoders), Local seed |
 | **Persist-on-Execute** | Advanced parameters (temperature, top_p, etc.) saved to defaults on each run |
 | **Docker Lifecycle** | Auto-start/stop containers, stale image detection |
 | **Image Passthrough** | Input images flow through to the output for downstream nodes |
@@ -138,9 +138,17 @@ progress.
 | **Keep Loaded** | OFF | Cache model in VRAM between runs |
 | **Multi-Task** | OFF | Enable sequential task chaining (shows task_2/3/4) |
 | **Sampling** | ON | Enable custom sampling values |
-| **Standard / NSFW** | Standard | Select this node's training examples. The button switches between Standard and NSFW; it is inactive while Training is off. Other nodes and root config are unchanged. |
-| **Training** | ON | Include few-shot training examples in the prompt. Disable to reduce context size (saves ~1–3 KB per prompt; system prompts and task instructions still load) |
+| **Thinking** | OFF | Native ComfyUI encoders only. Enable supported reasoning templates; off requests a direct answer. Saved per node, including multi-task chains. Older workflows without this choice default to off. |
+| **Standard / NSFW** | Standard | Select this node's system prompts and training examples. The button switches between Standard and NSFW; it is inactive while Training is off. Other nodes and root config are unchanged. |
+| **Training** | ON | Include few-shot training examples in the prompt. Disable to omit examples and use Standard system prompts; task instructions still load. |
 | **Local seed** | ON | Use the Seed section; disable to use a connected seed_input |
+
+With **Training** enabled, **NSFW** uses `config/system_prompts_nsfw.json` and
+`config/llm_few_shot_training_nsfw.json`. **Standard** uses their counterparts
+without `_nsfw`. Each node keeps its selected prompts and examples stable during
+an execution; file edits are read on the next execution. A custom system prompt
+supplied through the panel or a settings/prompt pipe takes precedence over either
+system-prompt file.
 
 The **Sampling** mode button enables custom sampling values. Model contains
 Registry, Delete and Refresh actions; full verification is available in Registry Manager.
@@ -301,7 +309,7 @@ Discovery reads checkpoint headers, not model weights or filename guesses. Comfy
 
 Supported native generation families include Gemma 2/3/4, Qwen3, Qwen3.5, Qwen3-VL and Qwen2.5-VL 7B where supported by the installed ComfyUI. Ordinary CLIP/T5 encoders, truncated diffusion encoders, music vocabularies, missing Gemma tokenizers and Qwen checkpoints missing a required output head are excluded. A text encoder used for diffusion conditioning is not necessarily a complete language generator. Files are reused in place; no model download, conversion or registry registration is needed.
 
-**GGUF files in `text_encoders`.** SmartLLM bundles its own ComfyUI-GGUF adapter; Smart Model Loader and a separate GGUF node pack are not required. Supported layouts are Qwen3 0.6B/4B/8B, Qwen2.5-VL 7B, Qwen3-VL 4B/8B and Gemma3 4B/12B, subject to the installed ComfyUI generation API. This does not add every llama.cpp architecture to the native backend. T5/UMT5, projector-only files, unsupported layouts and incomplete models stay out of the list.
+**GGUF files in `text_encoders`.** SmartLLM bundles its own ComfyUI-GGUF adapter; Smart Model Loader and a separate GGUF node pack are not required. Supported layouts are Qwen3 0.6B/4B/8B, Qwen3.5 dense 0.8B/2B/4B/9B/27B, Qwen2.5-VL 7B, Qwen3-VL 4B/8B and Gemma3 4B/12B, subject to the installed ComfyUI generation API. Qwen3.5 supports its hybrid attention and optional single MTP prediction layer. Compatible `qwen35` checkpoints such as Qwen3.8-27B are identified by their metadata and tensors. T5/UMT5, projector-only files, MoE or other unsupported layouts and incomplete models stay out of the list.
 
 For GGUF vision, copy **that model's own matching mmproj** into the **same subfolder** as its encoder. The base filenames must match after removing the quantization suffix and `mmproj` marker. For example:
 
@@ -313,13 +321,44 @@ models/text_encoders/
 
 Nova also checks the projector architecture, dimensions and tensor inventory. A projector is not interchangeable merely because it has the same size or contains `VL` in its name. Generic names such as `mmproj-model-f16.gguf` need an unambiguous matching base filename; only rename a projector after verifying it belongs to that model. If multiple projectors match, keep one matching companion beside the encoder. Missing, mismatched or ambiguous projectors leave the encoder in the text-only group. The Model section shows the selected projector or explains why vision is unavailable. The `LLM` folder is not searched for companions.
 
-Opening the Model selector refreshes discovery. Copying, replacing or deleting a companion also invalidates the native model and workflow cache on the next run. Quantized transformer layers remain quantized; token embeddings and Qwen2.5's direct output projection are expanded for native generation, so runtime memory can exceed the GGUF file size. Shared encoder/projector files remain read-only to SmartLLM.
+Opening the Model selector refreshes discovery. Copying, replacing or deleting a companion also invalidates the native model and workflow cache on the next run. Large transformer projections remain quantized; token embeddings, Qwen2.5/Qwen3.5 output heads and small Qwen3.5 decode parameters are expanded for native generation, so runtime memory can exceed the GGUF file size. Shared encoder/projector files remain read-only to SmartLLM.
 
 **Device** offers **Default** and **CPU**. Default uses ComfyUI's native text-encoder placement and offloading policy; CPU forces CPU processing. Older Auto/CUDA/MPS selections load as Default. Checkpoint precision, attention and memory offloading follow ComfyUI. **Keep loaded** reuses the encoder while the file and resolved loading settings match. Turning it off releases Nova's encoder after execution, including errors. ComfyUI can still offload cached weights to manage memory.
 
+Native Qwen3.5 GGUF generation reserves working memory for expanded image tokens,
+prompt processing, the output-length KV cache and temporary weight conversions.
+ComfyUI keeps the remaining weights in system RAM and transfers them as needed.
+A longer request can offload more of a cached model. This makes **Default** useful
+for checkpoints larger than available VRAM, provided system RAM is sufficient;
+CPU transfers can make generation slower. Smaller input images and lower
+**max_tokens** reduce the working-memory requirement.
+
 Local Transformers, YOLO and WD14 loading also use ComfyUI's selected device for memory reservations. Unsupported WD14/Florence accelerator paths use CPU. Managed GPU servers and native llama.cpp vision projectors cannot honor CPU selection and report that restriction; local Transformers and ComfyUI encoders support CPU vision.
 
-Prompts, task chaining, image batches, connected instructions and exact seeds retain Nova's existing workflow. **Training** uses the node's Standard/NSFW examples as labeled demonstrations in the system instructions; the native tokenizer accepts a single prompt rather than a chat message list. Native models use non-thinking templates where supported.
+Prompts, task chaining, image batches, connected instructions and exact seeds retain Nova's existing workflow. **Training** uses the node's Standard/NSFW examples as labeled demonstrations in the system instructions; the native tokenizer accepts a single prompt rather than a chat message list.
+
+The native encoder's **Thinking** button in the Mode bar defaults to **off** and
+requests the tokenizer's non-thinking template. Turn it on to allow reasoning
+where the installed ComfyUI tokenizer supports it. Each node saves its choice in
+the workflow and applies it to every chained task; it does not change global
+defaults. Older workflows without the setting use off. The caption output
+excludes reasoning; the raw output retains it. **Max tokens** covers both
+reasoning and the final answer. Nova reports a missing final answer instead of
+returning reasoning as a caption.
+
+With **Thinking on**, native Qwen3/Qwen3.5 **Simple**, **Detailed**, and
+**Ultra Detailed Description** use at most 128 thinking tokens or one quarter of **Max tokens**, whichever is
+smaller. At that limit, generation closes the thinking block and continues with
+the caption in the same pass. At 512 total tokens, up to 128 are available for
+thinking and approximately 380 remain for the caption after the closing markers.
+Natural earlier completion is preserved. Both phases count towards the existing
+total; no second image-processing pass or automatic retry is added. These requests
+use ordinary decoding if the checkpoint has speculative MTP weights so the
+thinking limit is enforced. Other tasks and families use their supported native
+templates without this budget; custom raw chat templates retain their own policy.
+With **Thinking off**, the full output allowance is available for the answer.
+This bounds reasoning length, not seconds per token;
+CPU offloading can still make a large checkpoint slow.
 
 Sampling supports temperature, top-k, top-p, min-p, repetition penalty and greedy generation. Native generation determines its own context allocation, so context-size, beam-search and Transformers-specific controls are hidden. Custom stop strings trim the decoded response; they do not stop native token generation early. Native EOS tokens still stop generation normally.
 
@@ -462,9 +501,9 @@ ONNX Runtime for SmilingWolf WD14 tagger models.
 
 | Task | Description |
 |------|-------------|
-| **Simple Description** | Brief one-sentence description |
-| **Detailed Description** | 2–3 sentences covering pose, action, and relevant setting |
-| **Ultra Detailed Description** | One or two paragraphs with detailed limb placement, interactions, and visible surroundings |
+| **Simple Description** | Concise description of the visible scene |
+| **Detailed Description** | Natural, detailed description of action, people, appearance, pose, camera angle, background, and lighting |
+| **Ultra Detailed Description** | Fuller connected paragraphs developing action, people, pose, camera angle, setting, textures, colours, and lighting |
 | **Cinematic Description** | Film/cinematography style description |
 | **Image Analysis** | Technical analysis |
 | **Detailed Analysis** | Analytical breakdown |
@@ -473,10 +512,16 @@ ONNX Runtime for SmilingWolf WD14 tagger models.
 | **OCR** | Extract text from image |
 
 Simple, Detailed, and Ultra Detailed each have four example pairs in both the
-Standard and NSFW training profiles. Simple stays concise; Detailed adds spatial
-relationships; Ultra Detailed describes visible limbs, support points, and
-interactions more fully. Their examples distinguish visible body parts from
-covered or cropped areas and prioritize what the subject is doing. These are
+Standard and NSFW training profiles. All three cover the action, visible people
+and their appearance, overall pose, camera angle, background, and lighting, with
+different levels of detail and no rigid sentence limit. Poses use natural
+descriptions such as "kneeling with legs apart"; individual limb positions are
+included when they help explain the action. Ultra Detailed develops each area
+with distinct visible details, keeps each person's features and actions together,
+and avoids repeated facts or generic mood conclusions. Its examples use paragraph
+breaks while retaining their scene descriptions. The NSFW examples retain full scene
+coverage, direct anatomical terms, size descriptions, and explicit actions across
+all three modes. Unshown or uncertain details are omitted silently. These are
 text demonstrations of caption style, not image-based training or model updates.
 Updates replace recognized bundled entries while preserving customized entries.
 
@@ -755,7 +800,8 @@ Enable in `config.json`:
 | `config.json` | Main config: LLM folder path, log level, HF token |
 | `docker_config.json` | Docker backend settings: ports, timeouts, images |
 | `registry/*.json` | Model registry files (8 backend files + defaults + user_models) |
-| `config/system_prompts.json` | Per-task system prompts (user-editable) |
+| `config/system_prompts.json` | Standard per-task system prompts (user-editable); also used when Training is off |
+| `config/system_prompts_nsfw.json` | Per-task system prompts used with Training enabled and NSFW selected (user-editable) |
 | `config/llm_few_shot_training.json` | Standard few-shot training examples |
 | `config/llm_few_shot_training_nsfw.json` | NSFW few-shot training examples |
 | `.defaults/` | Git-tracked defaults (`.example` suffix); extracted to repo on first run |

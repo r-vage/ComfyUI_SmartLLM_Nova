@@ -189,7 +189,9 @@ _few_shot_path: Optional[Path] = None
 @dataclass
 class _TrainingProfile:
     filename: str
+    system_prompts_filename: str
     examples: dict[str, Any] | None = None
+    system_prompts: dict[str, str] | None = None
 
 
 _training_profile: ContextVar[_TrainingProfile | None] = ContextVar(
@@ -205,7 +207,8 @@ def training_profile(nsfw: bool = False):
     if type(nsfw) is not bool:
         raise ValueError("NSFW training must be enabled or disabled.")
     filename = "llm_few_shot_training_nsfw.json" if nsfw else "llm_few_shot_training.json"
-    token = _training_profile.set(_TrainingProfile(filename))
+    prompts_filename = "system_prompts_nsfw.json" if nsfw else "system_prompts.json"
+    token = _training_profile.set(_TrainingProfile(filename, prompts_filename))
     try:
         yield
     finally:
@@ -230,23 +233,47 @@ def with_training_profile(function):
     return wrapped
 
 
+def _profile_snapshot(filename: str, reader, description: str) -> dict[str, Any]:
+    path = REPO_CONFIG_DIR / filename
+    try:
+        with _training_cache_lock:
+            info = path.stat()
+            stamp = (info.st_mtime_ns, info.st_ctime_ns, info.st_size, info.st_ino)
+            cached = _training_cache.get(path)
+            if cached is None or cached[0] != stamp:
+                cached = (stamp, reader(path))
+                _training_cache[path] = cached
+            return copy.deepcopy(cached[1])
+    except (OSError, ValueError, TypeError, RecursionError) as error:
+        raise ValueError(
+            f"Could not read {description} from config/{filename}: {error}"
+        ) from error
+
+
 def _profile_examples(profile: _TrainingProfile) -> dict[str, Any]:
     if profile.examples is None:
-        path = REPO_CONFIG_DIR / profile.filename
-        try:
-            with _training_cache_lock:
-                info = path.stat()
-                stamp = (info.st_mtime_ns, info.st_ctime_ns, info.st_size, info.st_ino)
-                cached = _training_cache.get(path)
-                if cached is None or cached[0] != stamp:
-                    cached = (stamp, _read_few_shot_configs(path))
-                    _training_cache[path] = cached
-                profile.examples = copy.deepcopy(cached[1])
-        except (OSError, ValueError, TypeError, RecursionError) as error:
-            raise ValueError(
-                f"Could not read training examples from config/{profile.filename}: {error}"
-            ) from error
+        profile.examples = _profile_snapshot(profile.filename, _read_few_shot_configs, "training examples")
     return profile.examples
+
+
+def _read_system_prompt_configs(path: Path) -> dict[str, str]:
+    with path.open("r", encoding="utf-8") as stream:
+        prompts = json.load(stream)
+    if not isinstance(prompts, dict) or any(not isinstance(value, str) for value in prompts.values()):
+        raise TypeError("System prompts must be a JSON object with string values.")
+    return prompts
+
+
+def get_training_system_prompts() -> dict[str, str] | None:
+    """Use the node's selected prompt file with a stable snapshot per execution."""
+    profile = _training_profile.get()
+    if profile is None:
+        return None
+    if profile.system_prompts is None:
+        profile.system_prompts = _profile_snapshot(
+            profile.system_prompts_filename, _read_system_prompt_configs, "system prompts",
+        )
+    return profile.system_prompts
 
 
 def get_llm_few_shot_config_path() -> Path:

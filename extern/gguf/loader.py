@@ -92,7 +92,7 @@ def gguf_sd_loader(path, handle_prefix=None):
 
     arch_str = get_field(reader, "general.architecture", str)
     type_str = get_field(reader, "general.type", str)
-    if arch_str not in {"qwen2vl", "qwen3", "qwen3vl", "gemma3"} and type_str not in {"mmproj", "clip-vision"}:
+    if arch_str not in {"qwen2vl", "qwen3", "qwen3vl", "qwen35", "gemma3"} and type_str not in {"mmproj", "clip-vision"}:
         raise ValueError(f"Unsupported native GGUF text encoder architecture: {arch_str!r}")
 
     # main loading loop
@@ -145,6 +145,9 @@ def gguf_sd_loader(path, handle_prefix=None):
 
     # extra info to return
     extra = {"arch_str": arch_str}
+    if arch_str == "qwen35":
+        extra["layers"] = get_field(reader, "qwen35.block_count", int) - (get_field(reader, "qwen35.nextn_predict_layers", int) or 0)
+        extra["key_heads"] = get_field(reader, "qwen35.ssm.group_count", int)
     return (state_dict, extra)
 
 
@@ -233,8 +236,13 @@ def gguf_mmproj_loader(path, arch):
         w2 = dequantize_tensor(vsd.pop("v.patch_embd.weight.1"), dtype=torch.float32)
         vsd["v.patch_embd.weight"] = torch.stack([w1, w2], dim=2)
 
-    if arch == "qwen3vl":
-        return sd_map_replace(vsd, CLIP_VISION_QWEN3_MAP)
+    if arch in {"qwen3vl", "qwen35"}:
+        vsd = sd_map_replace(vsd, CLIP_VISION_QWEN3_MAP)
+        if arch == "qwen35":
+            # Native interpolation reads this embedding's dtype directly.
+            key = "visual.pos_embed.weight"
+            vsd[key] = dequantize_tensor(vsd[key], dtype=torch.float32).as_subclass(torch.Tensor)
+        return vsd
 
     # run main replacement
     vsd = sd_map_replace(vsd, CLIP_VISION_SD_MAP)
@@ -306,7 +314,12 @@ def gguf_clip_loader(path, *, projector_path=None):
     if arch == "qwen2vl":
         # BaseGenerate projects logits directly with F.linear, bypassing GGMLOps.
         sd["output.weight"] = dequantize_tensor(sd["output.weight"], dtype=torch.float16)
-    sd = sd_map_replace(sd, GEMMA3_SD_MAP if arch == "gemma3" else LLAMA_SD_MAP)
+    if arch == "qwen35":
+        from .qwen35 import qwen35_convert
+
+        sd = qwen35_convert(sd, layers=extra["layers"], key_heads=extra["key_heads"])
+    else:
+        sd = sd_map_replace(sd, GEMMA3_SD_MAP if arch == "gemma3" else LLAMA_SD_MAP)
     if arch == "gemma3":
         sd = gemma3_norm_corrections(sd)
     if projector_path is not None:

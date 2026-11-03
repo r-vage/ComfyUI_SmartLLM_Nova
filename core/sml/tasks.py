@@ -2,7 +2,7 @@
 #
 # Hardcoded task structure — developer data that changes only when tasks are
 # added or removed, never by users. System prompts (user-editable) live in
-# config/system_prompts.json and are loaded separately.
+# config/system_prompts.json and config/system_prompts_nsfw.json.
 #
 # Usage:
 #     from ..core.tasks import (
@@ -398,7 +398,7 @@ def resolve_h3_input_mode(task_name: str, image_count: int) -> str | None:
 
 
 # ============================================================================
-# System Prompts (user-editable, loaded from config/system_prompts.json)
+# System Prompts (user-editable, selected by the loader's training profile)
 # ============================================================================
 
 _EXTENSION_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -409,8 +409,12 @@ _system_prompts_mtime: float = 0.0
 
 
 def _load_system_prompts() -> Dict[str, str]:
-    # Load system prompts from config/system_prompts.json.
-    # Returns cached result if file hasn't changed.
+    from .config_templates import get_training_system_prompts
+
+    selected = get_training_system_prompts()
+    if selected is not None:
+        return selected
+    # Consumers outside a loader execution retain the standard prompt file.
     global _system_prompts_cache, _system_prompts_mtime
     try:
         mtime = os.path.getmtime(_SYSTEM_PROMPTS_PATH)

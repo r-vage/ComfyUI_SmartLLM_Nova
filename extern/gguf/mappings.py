@@ -30,6 +30,54 @@ GEMMA3_SD_MAP.update(
     },
 )
 
+# Qwen3.5 has both gated full attention and DeltaNet blocks. Match complete
+# components: the generic attn_q replacement would corrupt attn_qkv.
+QWEN35_SD_MAP = {
+    "blk.": "model.language_model.layers.",
+    "attn_norm.": "input_layernorm.",
+    "post_attention_norm.": "post_attention_layernorm.",
+    "attn_q_norm.": "self_attn.q_norm.",
+    "attn_k_norm.": "self_attn.k_norm.",
+    "attn_qkv.": "linear_attn.in_proj_qkv.",
+    "attn_gate.": "linear_attn.in_proj_z.",
+    "attn_q.": "self_attn.q_proj.",
+    "attn_k.": "self_attn.k_proj.",
+    "attn_v.": "self_attn.v_proj.",
+    "attn_output.": "self_attn.o_proj.",
+    "ssm_alpha.": "linear_attn.in_proj_a.",
+    "ssm_beta.": "linear_attn.in_proj_b.",
+    "ssm_out.": "linear_attn.out_proj.",
+    "ssm_norm.": "linear_attn.norm.",
+    "ssm_conv1d.": "linear_attn.conv1d.",
+    "ssm_dt.bias": "linear_attn.dt_bias",
+    "ssm_a": "linear_attn.A_log",
+    "ffn_up.": "mlp.up_proj.",
+    "ffn_down.": "mlp.down_proj.",
+    "ffn_gate.": "mlp.gate_proj.",
+    "token_embd.": "model.language_model.embed_tokens.",
+    "output_norm.": "model.language_model.norm.",
+    "output.weight": "lm_head.weight",
+}
+
+
+def qwen35_map(raw_sd, layers):
+    """Map the backbone and optional single MTP head, also usable on shapes."""
+    mapped = sd_map_replace(raw_sd, QWEN35_SD_MAP)
+    prefix = f"model.language_model.layers.{layers}."
+    mtp = {"nextn.eh_proj.": "fc.", "nextn.enorm.": "pre_fc_norm_embedding.",
+           "nextn.hnorm.": "pre_fc_norm_hidden.", "nextn.shared_head_norm.": "norm."}
+    result = {}
+    for key, value in mapped.items():
+        if key.startswith(prefix):
+            suffix = key[len(prefix):]
+            key = "mtp.layers.0." + suffix
+            for source, target in mtp.items():
+                if suffix.startswith(source):
+                    key = "mtp." + target + suffix[len(source):]
+                    break
+        result[key] = value
+    return result
+
 CLIP_VISION_SD_MAP = {
     "mm.": "visual.merger.mlp.",
     "v.post_ln.": "visual.merger.ln_q.",

@@ -69,6 +69,7 @@ class GGMLTensor(torch.Tensor):
         new.tensor_type = getattr(self, "tensor_type", None)
         new.tensor_shape = getattr(self, "tensor_shape", new.data.shape)
         new.patches = getattr(self, "patches", []).copy()
+        new.column_permutation = getattr(self, "column_permutation", None)
         return new
 
     def clone(self, *args, **kwargs):
@@ -87,12 +88,14 @@ class GGMLTensor(torch.Tensor):
     def new_empty(self, size, *args, **kwargs):
         # Intel Arc fix, ref#50
         new_tensor = super().new_empty(size, *args, **kwargs)
-        return GGMLTensor(
+        result = GGMLTensor(
             new_tensor,
             tensor_type=getattr(self, "tensor_type", None),
             tensor_shape=size,
             patches=getattr(self, "patches", []).copy(),
         )
+        result.column_permutation = getattr(self, "column_permutation", None)
+        return result
 
     @property
     def shape(self):
@@ -287,6 +290,11 @@ class GGMLOps(comfy.ops.manual_cast):
             return torch.nn.functional.linear(input, weight, bias)
 
     class Conv2d(GGMLLayer, comfy.ops.manual_cast.Conv2d):
+        def forward_ggml_cast_weights(self, input):
+            weight, bias = self.cast_bias_weight(input)
+            return self._conv_forward(input, weight, bias)
+
+    class Conv3d(GGMLLayer, comfy.ops.manual_cast.Conv3d):
         def forward_ggml_cast_weights(self, input):
             weight, bias = self.cast_bias_weight(input)
             return self._conv_forward(input, weight, bias)

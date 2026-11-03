@@ -27,16 +27,21 @@ def dequantize_tensor(tensor, dtype=None, dequant_dtype=None):
     oshape = getattr(tensor, "tensor_shape", tensor.shape)
 
     if qtype in TORCH_COMPATIBLE_QTYPES:
-        return tensor.to(dtype)
-    if qtype in dequantize_functions:
+        result = tensor.to(dtype)
+    elif qtype in dequantize_functions:
         dequant_dtype = dtype if dequant_dtype == "target" else dequant_dtype
-        return dequantize(tensor.data, qtype, oshape, dtype=dequant_dtype).to(dtype)
-    # this is incredibly slow
-    tqdm.write(
-        f"Falling back to numpy dequant for qtype: {getattr(qtype, 'name', repr(qtype))}",
-    )
-    new = gguf.quants.dequantize(tensor.cpu().numpy(), qtype)
-    return torch.from_numpy(new).to(tensor.device, dtype=dtype)
+        result = dequantize(tensor.data, qtype, oshape, dtype=dequant_dtype).to(dtype)
+    else:
+        # this is incredibly slow
+        tqdm.write(
+            f"Falling back to numpy dequant for qtype: {getattr(qtype, 'name', repr(qtype))}",
+        )
+        new = gguf.quants.dequantize(tensor.cpu().numpy(), qtype)
+        result = torch.from_numpy(new).reshape(oshape).to(tensor.device, dtype=dtype)
+    permutation = getattr(tensor, "column_permutation", None)
+    if permutation is not None:
+        result = result.as_subclass(torch.Tensor).index_select(-1, permutation.to(result.device))
+    return result
 
 
 def dequantize(data, qtype, oshape, dtype=None):

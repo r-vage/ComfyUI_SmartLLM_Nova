@@ -535,6 +535,7 @@ def _dispatch_generate(
     repeat_last_n=64,
     stop_sequences=None,
     system_prompt=None,
+    enable_thinking=False,
 ):
     # Route generation to the correct backend.
     # Returns (result, raw_output, data, original_size, resized_size).
@@ -562,6 +563,7 @@ def _dispatch_generate(
                 top_k=top_k, top_p=top_p, min_p=min_p,
                 repetition_penalty=repetition_penalty, seed=seed,
                 stop_sequences=stop_sequences,
+                enable_thinking=enable_thinking,
             )
         # ── Docker / OpenAI-compatible backends ──
         elif hasattr(instance, "is_vllm") and instance.is_vllm:
@@ -814,6 +816,7 @@ def _generate_for_family(
     mirostat_tau=5.0,
     repeat_last_n=64,
     stop_sequences=None,
+    enable_thinking=False,
 ):
     # Dispatch to correct generation path based on model family.
     # Returns (result, data).
@@ -888,6 +891,7 @@ def _generate_for_family(
             context_size=context_size,
             frame_count=frame_count,
             llm_mode=task_name.lower().replace(" ", "_") if is_text_only else None,
+            enable_thinking=enable_thinking,
             use_few_shot=use_few_shot,
             min_p=min_p,
             mirostat=mirostat,
@@ -932,6 +936,7 @@ def _generate_for_family(
             task_name=task_name,
             context_size=context_size,
             llm_mode=llm_mode,
+            enable_thinking=enable_thinking,
             use_few_shot=use_few_shot,
             min_p=min_p,
             mirostat=mirostat,
@@ -1060,6 +1065,7 @@ def _run_multi_task_chain(
     mirostat_tau=5.0,
     repeat_last_n=64,
     stop_sequences=None,
+    enable_thinking=False,
 ):
     # Run tasks 2..N sequentially, chaining output → input.
     # Returns (final_result, final_data).
@@ -1123,6 +1129,7 @@ def _run_multi_task_chain(
             "context_size": context_size,
             "frame_count": frame_count,
             "llm_mode": chained_llm_mode,
+            "enable_thinking": enable_thinking,
             "use_few_shot": use_few_shot,
             "min_p": min_p,
             "mirostat": mirostat,
@@ -1650,8 +1657,16 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                     "nsfw_training",
                     default=False,
                     optional=True,
-                    tooltip="Select NSFW training examples when enabled; otherwise use Standard. "
+                    tooltip="Select NSFW system prompts and training examples when enabled; otherwise use Standard. "
                     "Applies only while Training is enabled. Stored in this node, without changing config.json.",
+                ),
+                io.Boolean.Input(
+                    "enable_thinking",
+                    default=False,
+                    optional=True,
+                    tooltip="Allow thinking for native ComfyUI encoders that support it. Off by default for faster output. "
+                    "When enabled, native Qwen description tasks use a short thinking budget within Max tokens. "
+                    "Stored in this node without changing global defaults.",
                 ),
                 # ── Connection slots ──────────────────────────────────
                 io.Image.Input(
@@ -1725,6 +1740,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
         # Optional connections
         images=None,
         system_prompt=None,
+        enable_thinking=False,
     ):
         start_time = time.time()
 
@@ -1818,6 +1834,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
         keep_model_loaded = _unwrap_scalar(keep_model_loaded, False)
         use_advanced = _unwrap_scalar(use_advanced, True)
         use_few_shot_training = _unwrap_scalar(use_few_shot_training, True)
+        enable_thinking = _unwrap_scalar(enable_thinking, False)
         min_p = _unwrap_scalar(min_p, 0.0)
         mirostat = _unwrap_scalar(mirostat, "0 (off)")
         mirostat_eta = _unwrap_scalar(mirostat_eta, 0.1)
@@ -2204,6 +2221,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                         context_size=context_size,
                         frame_count=generation_frame_count,
                         use_few_shot=use_few_shot_training,
+                        enable_thinking=enable_thinking,
                         min_p=min_p,
                         mirostat=mirostat_int,
                         mirostat_eta=mirostat_eta,
@@ -2246,6 +2264,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                             context_size=context_size,
                             frame_count=frame_count,
                             use_few_shot=use_few_shot_training,
+                            enable_thinking=enable_thinking,
                             min_p=min_p,
                             mirostat=mirostat_int,
                             mirostat_eta=mirostat_eta,

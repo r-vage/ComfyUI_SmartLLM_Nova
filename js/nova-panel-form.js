@@ -6,7 +6,7 @@ import { seedControls } from './nova-panel-seed-controls.js';
 import { fetchModelEntry, fetchModelList, fetchDetectionModelList, fetchTaskList, fetchModelTasks, expireMetadataCache } from './smartllm-metadata.js';
 import { onSmartLLMRegistryChanged } from './smartllm-registry-events.js';
 
-const LABELS = { memory_cleanup: 'Cleanup', cleanup: 'Cleanup', keep_model_loaded: 'Keep loaded', multi_task_mode: 'Multi-task', use_few_shot_training: 'Training', nsfw_training: 'NSFW', use_advanced: 'Sampling', enable_preview_boxes: 'Preview boxes', get_mask_from_image: 'From image', combine_masks: 'Combine', invert: 'Invert', user_prompt: 'Prompt', user_input: 'Prompt / classes', model_name: 'Model', song_json: 'Song JSON', nms_iou_threshold: 'NMS IoU', detection_filter: 'Max area ratio', replace_underscore: 'Remove underscores', char_threshold: 'Character threshold' };
+const LABELS = { memory_cleanup: 'Cleanup', cleanup: 'Cleanup', keep_model_loaded: 'Keep loaded', multi_task_mode: 'Multi-task', use_few_shot_training: 'Training', nsfw_training: 'NSFW', enable_thinking: 'Thinking', use_advanced: 'Sampling', enable_preview_boxes: 'Preview boxes', get_mask_from_image: 'From image', combine_masks: 'Combine', invert: 'Invert', user_prompt: 'Prompt', user_input: 'Prompt / classes', model_name: 'Model', song_json: 'Song JSON', nms_iou_threshold: 'NMS IoU', detection_filter: 'Max area ratio', replace_underscore: 'Remove underscores', char_threshold: 'Character threshold' };
 const clean = values => (values ?? []).map(value => typeof value === 'string' ? value : value.display_name).filter(value => value && !value.startsWith('__SEP__') && !value.startsWith('─'));
 
 export class PanelForm {
@@ -51,7 +51,7 @@ export class PanelForm {
                 : 'Connected settings and query text override matching values below. Missing settings use these local values. Use Smart Detection Prompt Pipe to connect external query text.'));
         const entry = this.model === this.params[this.modelKey] ? this.entry : null;
         const backend = entry?.backend, family = entry?.family, wd = backend === 'wd14', yolo = backend === 'yolo', florence = family === 'Florence';
-        if (kind === 'loader') this.bar(content, ['memory_cleanup', 'keep_model_loaded', ...(!wd ? ['multi_task_mode', 'use_few_shot_training', 'nsfw_training', 'use_advanced'] : [])], true);
+        if (kind === 'loader') this.bar(content, ['memory_cleanup', 'keep_model_loaded', ...(!wd ? ['multi_task_mode', 'use_few_shot_training', 'nsfw_training', 'use_advanced', ...(backend === 'comfyui' && this.spec.fields.enable_thinking ? ['enable_thinking'] : [])] : [])], true);
         else if (kind === 'detection') this.bar(content, ['cleanup', 'keep_model_loaded', 'enable_preview_boxes'], true);
         if (this.modelKey) {
             this.section(content, 'model', 'Model', [], body => {
@@ -202,9 +202,18 @@ export class PanelForm {
         if (spec.type === 'BOOLEAN') { input.type = 'checkbox'; input.checked = value; wrap.classList.add('sln-panel-check'); }
         else if (['INT', 'FLOAT'].includes(spec.type)) {
             input.type = 'number'; for (const name of ['min', 'max', 'step']) if (spec[name] != null) input[name] = spec[name]; input.value = value;
+            // Keep every integer valid; HTML's min=1 step grid would turn 4096 into 4097.
+            if (key === 'max_tokens') input.step = 1;
         } else input.value = value;
         if (spec.multiline) { input.rows = key === 'song_json' ? 8 : 4; this.textSizes.attach(input, key); }
-        input.oninput = () => this.edit(state => { state.config.parameters[key] = spec.type === 'BOOLEAN' ? input.checked : input.type === 'number' ? (Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : null) : input.value; }, false);
+        input.oninput = event => {
+            // Native arrows/spinners emit Event; typing and pasting emit InputEvent.
+            if (key === 'max_tokens' && event.isTrusted && !('inputType' in event)) {
+                const previous = this.params[key], direction = Math.sign(input.valueAsNumber - previous);
+                if (Number.isInteger(previous) && direction) input.value = Math.max(spec.min, Math.min(spec.max, previous + direction * spec.step));
+            }
+            this.edit(state => { state.config.parameters[key] = spec.type === 'BOOLEAN' ? input.checked : input.type === 'number' ? (Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : null) : input.value; }, false);
+        };
         wrap.append(input); parent.append(wrap);
     }
     summary(key) {

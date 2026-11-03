@@ -17,9 +17,25 @@ _LOG_PREFIX = "Defaults"
 _MANIFEST_NAME = ".manifest.json"
 _DEFAULT_VALUE_UPGRADES = {
     Path("config/system_prompts.json"): {
-        "Simple Description": "041c44d1996e1c159dcc9ea5151d0bded5a1c752ed3427a3de088bc34ed3adc0",
-        "Detailed Description": "82a43e6b8c0d2e81d249b8109c1d1f9a462d57e5ba474efe2e269600f0c9ae4c",
-        "Ultra Detailed Description": "707b8e6f4a12797c35a6a92eae6caafa9ad20c21904e9af605a611553622efc3",
+        "Simple Description": (
+            "041c44d1996e1c159dcc9ea5151d0bded5a1c752ed3427a3de088bc34ed3adc0",
+            "6c9dbece46a6351d5ae1b5f1b0b425fe00be57faf2ed2b208c6a9b729b92c348",
+            "b8743371674846abe85fcfa070a9c2ab37e9eedd52a09e46dff6f8f09e14f8f8",
+            "aeefd33e7117ec9e48b994728a1929351130343335a1f2c76739130120982206",
+        ),
+        "Detailed Description": (
+            "82a43e6b8c0d2e81d249b8109c1d1f9a462d57e5ba474efe2e269600f0c9ae4c",
+            "539cd7b53e972bb41bdc3af3a4b4d3327a31742a5e9af93328620702e4f94f60",
+            "bfa6653d8db7a7a6740adef5cb676fe6608ebef31150a29646a4beb706aea326",
+            "a081bc8062e696681d78d9ff99b939b1eb81d768285b0cf530c89e0296c011ac",
+        ),
+        "Ultra Detailed Description": (
+            "707b8e6f4a12797c35a6a92eae6caafa9ad20c21904e9af605a611553622efc3",
+            "966d72276cd282a303ec7ffb59f3f6243d0d93c84cfaf27bdb107562ca0084e8",
+            "ac937870c4ce4a36366800ec04aa83f0f837c2a3fab4fec9123138a894409a3c",
+            "71a5334a06d9201ef92defdb94aa58d57bea81169c4a7385753087cce05b898e",
+            "fb439f50c83c5210896e0b146b37f8d3de041cded00c4605570f31aa224e56fa",
+        ),
         "MiniMax Music 3": (
             "6db71d6f7fd9890a6f75127e1e290cbe72988d5b6d39d99812ee4a3cd738e739",
             "aba0293889df90a05a4a2f14c083ec10d22b75f37b3f2fa3a173dc0bd2253701",
@@ -41,21 +57,112 @@ _DEFAULT_VALUE_UPGRADES = {
         "MiniMax H3 L2VA Timeline 15s": (
             "118548380acf93fe8e2352246538b57ce1560ce4a835ca9b218dd33433899ce2",
         ),
-        "Wan 2.2 Scene 5s": "4e85319ae508d07c8df224dabb11c02cd686f88ef11557071d1d7c7aae48ff5f",
-        "Wan 2.2 Timeline 5s": "955c2d2efd52d093fa57ff646652615a145b0e7b46d60f95909af2c52987d5e0",
-        "Wan 2.2 Timeline 5s 2s": "88d1e095216abcd1acd1721f9b63f4e104f93711e261f5b7553b6f9b15d2c0d0",
-        "Wan 2.2 Timeline 5s 3s": "46761f8c47641b6d776a8b1d3ba29806f26aa48ad904b9fa3c10b2076b847225",
-        "Wan 2.2 Scene 10s": "ecd4a75b5b62b9028fda5e4f23a23bad082620f61e99266f67d270fd62d59513",
-        "Wan 2.2 Timeline 10s": "361d1dcd651abaf2cbbdf07224d01e96d2c3e06704dbc928bd492e895e1ab722",
-        "Wan 2.2 Scene 20s": "7a919e2e6e6b286818a2cc640bac7fb580f66dd09a2628b9b9f95dd9f4ef05e2",
-        "Wan 2.2 Timeline 20s": "706468776084156d1c42bbbfcbb7556b47309740dafb1561ed3b133d47a40b02",
+        "Wan 2.2 Scene 5s": (
+            "4e85319ae508d07c8df224dabb11c02cd686f88ef11557071d1d7c7aae48ff5f",
+            "0a59a674f94312cc2dedab181daf52eba290c756c2b914f2a7816e3353f52d6e",
+        ),
+        "Wan 2.2 Timeline 5s": (
+            "955c2d2efd52d093fa57ff646652615a145b0e7b46d60f95909af2c52987d5e0",
+            "84c9716097afda70e1a7469fd156b7f339caa1709f6bef4f7cea9785ed34d401",
+        ),
+        "Wan 2.2 Timeline 5s 2s": (
+            "88d1e095216abcd1acd1721f9b63f4e104f93711e261f5b7553b6f9b15d2c0d0",
+            "ec85b22d4f60b51b9479502f4022101c6fcc981f14e74dcd1a6a9adb602bb1ef",
+        ),
+        "Wan 2.2 Timeline 5s 3s": (
+            "46761f8c47641b6d776a8b1d3ba29806f26aa48ad904b9fa3c10b2076b847225",
+            "06d1b671360c1e2e903766e299570d42a9e7cd2a90cc51c05d21690a417c6aa4",
+        ),
+        "Wan 2.2 Scene 10s": (
+            "ecd4a75b5b62b9028fda5e4f23a23bad082620f61e99266f67d270fd62d59513",
+            "e8f095f1e40a010c58dea429c933a13f7d921c5139065334b49210d149b63cd2",
+        ),
+        "Wan 2.2 Timeline 10s": (
+            "361d1dcd651abaf2cbbdf07224d01e96d2c3e06704dbc928bd492e895e1ab722",
+            "6ee457b9605c7c1508726a7cb113ad5bd24e5cb838a8c1a4424b97712d1c335a",
+        ),
+        "Wan 2.2 Scene 20s": (
+            "7a919e2e6e6b286818a2cc640bac7fb580f66dd09a2628b9b9f95dd9f4ef05e2",
+            "d7254828b56fb881a36bd56afc63f7f86654dfd4c81fc3529e87ada1be5ed99b",
+        ),
+        "Wan 2.2 Timeline 20s": (
+            "706468776084156d1c42bbbfcbb7556b47309740dafb1561ed3b133d47a40b02",
+            "266d493f848267eb0cbffb3636bc5c6d3aea594b27088db750252f5923932d89",
+        ),
         "Wan 2.2 CN Atomic": "7a5523da49285d67ce93f538a6b89c538ee4ab8e65900805e4b28a11321220cd",
         "LTX 2.3 I2V": "dbf829e66bc2232fb5dd542c069f804b81641e2add4cc3233c9d8def4b705eeb",
+        "Cinematic Description": (
+            "9c987ea8d1c83535f515ed125767455d84839235b58acaf934c39a02ec5376b8",
+        ),
+        "Image Analysis": (
+            "74ab8e9bb7111cf6622365620153a31315c08c8517f1a6689e9ac2b0723e92fd",
+        ),
+        "Detailed Analysis": (
+            "95ae78bea8fb2f0dad98ea3383d90472c6f9bf25ebb38f2b781947bc8be549a2",
+        ),
+        "Tags": (
+            "77cb4e2939eba82aeaa6b66adb39b432d25534eb1827cd45446482334a174e35",
+        ),
+        "Video Summary": (
+            "43fc1d75e8213d1ca9f8ec2085eaf833267105a933c31ef1a57ba0cec18dfb68",
+        ),
+        "Expand Text": (
+            "6199c90b029ca5729b061301d273c0c9d7dafbcecee3452477e46f5fffe3a913",
+        ),
+        "Refine & Expand Prompt": (
+            "cfeba7cfa367598853a95b5afca146e30e08538a5006a23969182051e9177885",
+        ),
+        "Rewrite Style": (
+            "32635e42d2fad2997220452a1ebd43582a030dd05b5cb2f0e8b1c0428d67c8f4",
+        ),
+        "Tags to Natural Language": (
+            "2c2ebfb13d5f994efc3f83453466c18997a9c97d5f1fa268cf6a89e05a55b8da",
+        ),
+        "Natural Language to Tags": (
+            "5e694c8aea7f233a18d25de5653f98e707c29587d681f882a18f80cc8da05840",
+        ),
+        "Translate to English": (
+            "1cf514477ea1e3150ce3ccd84ced9180c77044c808830f67d03009f81518780e",
+        ),
+        "Short Story": (
+            "2f4f57e30e94e5252ab892a0cd124993913c64a45bf7e329bd76a30f996e8394",
+        ),
+        "Summarize": (
+            "a0c4e830179f88f0df3c232e70ebfc39079d350e35b86d0a9d14da75f0a9151d",
+        ),
+        "Prompt Variations": (
+            "21fa83e7d9c9b9eee011a813fb6f94d06272fcdbd735f70a89a8d362b42110c4",
+        ),
+    },
+    Path("config/system_prompts_nsfw.json"): {
+        "Simple Description": (
+            "b8743371674846abe85fcfa070a9c2ab37e9eedd52a09e46dff6f8f09e14f8f8",
+        ),
+        "Detailed Description": (
+            "bfa6653d8db7a7a6740adef5cb676fe6608ebef31150a29646a4beb706aea326",
+        ),
+        "Ultra Detailed Description": (
+            "ac937870c4ce4a36366800ec04aa83f0f837c2a3fab4fec9123138a894409a3c",
+            "b8d052ea0e0fcfec00f4114d166bc46e38c94c4482125255438c8007291fba2a",
+        ),
     },
     Path("config/llm_few_shot_training.json"): {
-        "simple_description": "f38b74170016abe20aa34caa041f647f6519f3725b6d63bbc1fd0c1c9279b55b",
-        "detailed_description": "8d5d08dd2a4a59dde5d9205fb9195e4f37714989078fa486b5b7d09c7a0ba541",
-        "ultra_detailed_description": "fb60bbcb8d2126423a055fa1addf16204775f4948d0a28a0c98fd1066e2bd3c7",
+        "simple_description": (
+            "f38b74170016abe20aa34caa041f647f6519f3725b6d63bbc1fd0c1c9279b55b",
+            "c9117e9d305351199e3bb2513fae0cbd05cb37beacbda21fcbea41da3c6b7249",
+            "f4172d60a24d623393720fa758a95bef9d0afa4c19066f874e1183dfd61e37a1",
+        ),
+        "detailed_description": (
+            "8d5d08dd2a4a59dde5d9205fb9195e4f37714989078fa486b5b7d09c7a0ba541",
+            "33c948b5a3e059dcc48271921362a8bca3d48cb93cb71032cb5c792275ec4e4e",
+            "7c3aa418fd5d0ed58c0a6f128cca406082e779762521eaa60daa478b4daa587f",
+        ),
+        "ultra_detailed_description": (
+            "fb60bbcb8d2126423a055fa1addf16204775f4948d0a28a0c98fd1066e2bd3c7",
+            "0ba3a53f902a95506c4a9350945e4523efb2072e331ad2d4f89762e169b85fea",
+            "202c487116e05b4e6cef4d6e4293630c558ba3edb4cb80ad1b864e2d566933f5",
+            "79430a0b0be51b537aadaef371e87bb25573e90389808b2a6f3dbe74754ca79b",
+        ),
         "minimax_music_3": (
             "eb4dd0d3053de1b777d09b24fea6ef467976fbe0a3c0c5215e94705c4364cc16",
             "de9b9b0554e455f994fbc2160d9b4b87f1f21764d19dbf65c18985449ebd7919",
@@ -85,9 +192,25 @@ _DEFAULT_VALUE_UPGRADES = {
         "ltx_2.3_i2v": "ddddcb90ebc4292ae937be87f8fe1d542e6ab55416fc777a56dd44208ea4a397",
     },
     Path("config/llm_few_shot_training_nsfw.json"): {
-        "simple_description": "7d9c53aff8e0665d301dcc9828dabf2d28e2a5d90e0eeea346ca32548400f6ba",
-        "detailed_description": "473142323f9a62e263cd2beffad5d6030bfb65f1fcfce95ad643df2e3da82f9a",
-        "ultra_detailed_description": "99438a74d7201070b5fea1a70c1294071864751b77664c8fb77c56d3014c5b8b",
+        "simple_description": (
+            "7d9c53aff8e0665d301dcc9828dabf2d28e2a5d90e0eeea346ca32548400f6ba",
+            "e01a31c550c8037295eefa485c80ad28beaea429a352d5ee801d09961828a312",
+            "1475753780fd1b58be1730186fa5372fdc128f29242faa8cdc9f01cc002480b2",
+            "e7fde3e7566234c3ffa5bf16893548f673ce16399ea5445dea3264318423bbb2",
+        ),
+        "detailed_description": (
+            "473142323f9a62e263cd2beffad5d6030bfb65f1fcfce95ad643df2e3da82f9a",
+            "b2f5a72fa125d6c305b8190e88af80ef6278369fde41080b31c4c69f184e3648",
+            "88b3739c3171319ff715a648bcbf039b421db1a05ce8dc70a3737a76572f6b73",
+            "2ba8a18b1bb535ea244de4795af7b2e813002dbbd7c786e33b385e8eb31107f9",
+        ),
+        "ultra_detailed_description": (
+            "99438a74d7201070b5fea1a70c1294071864751b77664c8fb77c56d3014c5b8b",
+            "c43625ab470e6a5d0484b95e670c44e4ffe661ff3280a5ad7f6ae5320d33e156",
+            "6142924736694c7a4b93f7d13a5a9254c147414c5302a908ff7af65d5876cffd",
+            "a7ae88ba1882da33507da16f01fb8cbeff21cb0310ed9dfa9f1413d204c92e21",
+            "ba335eab8104debd7727570f1e716b2577088f925d8cc8140573d1b47b74b565",
+        ),
         "minimax_music_3": (
             "eb4dd0d3053de1b777d09b24fea6ef467976fbe0a3c0c5215e94705c4364cc16",
             "de9b9b0554e455f994fbc2160d9b4b87f1f21764d19dbf65c18985449ebd7919",

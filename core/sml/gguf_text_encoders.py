@@ -4,7 +4,12 @@ import re
 from pathlib import Path
 from types import SimpleNamespace
 
-from ...extern.gguf.mappings import GEMMA3_SD_MAP, LLAMA_SD_MAP, sd_map_replace
+from ...extern.gguf.mappings import (
+    GEMMA3_SD_MAP,
+    LLAMA_SD_MAP,
+    qwen35_map,
+    sd_map_replace,
+)
 from .gguf_metadata import GGUFHeader, read_gguf_header
 
 # Qualified native generation layouts: (GGUF architecture, hidden size) ->
@@ -16,6 +21,11 @@ _LAYOUTS = {
     ("qwen3", 4096): ("QWEN3_8B", 36, 151936),
     ("qwen3vl", 2560): ("QWEN3VL_4B", 36, 151936),
     ("qwen3vl", 4096): ("QWEN3VL_8B", 36, 151936),
+    ("qwen35", 1024): ("QWEN35_08B", 24, 248320),
+    ("qwen35", 2048): ("QWEN35_2B", 24, 248320),
+    ("qwen35", 2560): ("QWEN35_4B", 32, 248320),
+    ("qwen35", 4096): ("QWEN35_9B", 32, 248320),
+    ("qwen35", 5120): ("QWEN35_27B", 64, 248320),
     ("gemma3", 2560): ("GEMMA_3_4B", 34, 262208),
     ("gemma3", 3840): ("GEMMA_3_12B", 48, 262208),
 }
@@ -35,6 +45,10 @@ def _compatible_projector(header: GGUFHeader, arch: str, hidden: int) -> bool:
             or meta.get("clip.has_vision_encoder") is not True
             or meta.get("clip.vision.projection_dim") != hidden):
         return False
+    if arch == "qwen35":
+        from .gguf_qwen35 import compatible_projector
+
+        return compatible_projector(header, hidden)
     if arch == "qwen2vl":
         kind, width, layers = "qwen2.5vl_merger", 1280, 32
     elif arch == "qwen3vl":
@@ -130,16 +144,23 @@ def inspect_gguf_encoder(path: Path) -> dict | None:
     if layout is None:
         return None
     expected, layers, expected_vocabulary = layout
-    if vocabulary != expected_vocabulary or meta.get(f"{arch}.block_count") != layers:
+    if vocabulary != expected_vocabulary:
         return None
     if meta.get(f"{arch}.embedding_length") != hidden or meta.get("split.count", 1) != 1:
         return None
-    blocks = {int(match[1]) for name in shapes if (match := re.match(r"blk\.(\d+)\.", name))}
-    if blocks != set(range(layers)) or shapes.get("output_norm.weight") != (hidden,):
-        return None
-    names = ("attn_q", "attn_k", "attn_v", "attn_output", "ffn_up", "ffn_gate", "ffn_down", "attn_norm", "ffn_norm")
-    if any(f"blk.{index}.{name}.weight" not in shapes for index in range(layers) for name in names):
-        return None
+    if arch == "qwen35":
+        from .gguf_qwen35 import compatible_language
+
+        if not compatible_language(header, hidden):
+            return None
+    else:
+        blocks = {int(match[1]) for name in shapes if (match := re.match(r"blk\.(\d+)\.", name))}
+        if (meta.get(f"{arch}.block_count") != layers or blocks != set(range(layers))
+                or shapes.get("output_norm.weight") != (hidden,)):
+            return None
+        names = ("attn_q", "attn_k", "attn_v", "attn_output", "ffn_up", "ffn_gate", "ffn_down", "attn_norm", "ffn_norm")
+        if any(f"blk.{index}.{name}.weight" not in shapes for index in range(layers) for name in names):
+            return None
     if expected in {"QWEN25_7B", "QWEN3_8B", "QWEN3VL_8B"} and shapes.get("output.weight") != embedding:
         return None
     if arch == "gemma3" and any(header.arrays.get("tokenizer.ggml." + name) != vocabulary
@@ -148,8 +169,11 @@ def inspect_gguf_encoder(path: Path) -> dict | None:
     roots = [Path(root).resolve() for root in folder_paths.get_folder_paths("text_encoders")]
     projector, note = _projector(path, roots, arch, hidden)
     # Keep the installed ComfyUI detector as the final compatibility authority.
-    mapped = sd_map_replace({key: SimpleNamespace(shape=value) for key, value in shapes.items()},
-                            GEMMA3_SD_MAP if arch == "gemma3" else LLAMA_SD_MAP)
+    mapped = {key: SimpleNamespace(shape=value) for key, value in shapes.items()}
+    if arch == "qwen35":
+        mapped = qwen35_map(mapped, layers)
+    else:
+        mapped = sd_map_replace(mapped, GEMMA3_SD_MAP if arch == "gemma3" else LLAMA_SD_MAP)
     if arch == "qwen3vl":
         mapped["model.visual.deepstack_merger_list.0.norm.weight"] = SimpleNamespace(shape=(hidden,))
         mapped["model.visual.merger.linear_fc2.weight"] = SimpleNamespace(shape=(hidden, hidden))

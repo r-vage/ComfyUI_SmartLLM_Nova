@@ -1,7 +1,8 @@
 """Text generation through ComfyUI's native CLIP/text encoder API."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from threading import RLock
 
 import torch
 
@@ -9,7 +10,9 @@ from .comfy_qwen25 import generation_options
 from .common import clean_model_output
 from .config_templates import get_llm_few_shot_examples
 from .device import resolve_requested_device
+from .gguf_memory import gguf_generation_reserve
 from .logger import log
+from .native_thinking import description_thinking_budget
 from .tasks import get_system_prompt
 from .text_encoders import (
     file_signature,
@@ -25,6 +28,7 @@ class ComfyTextEncoder:
     has_vision: bool
     cache_key: tuple
     is_comfyui: bool = True
+    generation_lock: object = field(default_factory=RLock, repr=False, compare=False)
 
 
 _cached_encoder: ComfyTextEncoder | None = None
@@ -35,13 +39,14 @@ def release_text_encoder(instance: ComfyTextEncoder | None) -> None:
     global _cached_encoder
     if instance is None:
         return
-    if _cached_encoder is instance:
-        _cached_encoder = None
-    clip, instance.clip = instance.clip, None
-    if clip is not None:
-        import comfy.model_management as mm
+    with instance.generation_lock:
+        if _cached_encoder is instance:
+            _cached_encoder = None
+        clip, instance.clip = instance.clip, None
+        if clip is not None:
+            import comfy.model_management as mm
 
-        mm.unload_model_and_clones(clip.patcher, all_devices=True)
+            mm.unload_model_and_clones(clip.patcher, all_devices=True)
 
 
 def clear_text_encoder_cache() -> None:
@@ -137,28 +142,60 @@ def _prepare_prompt(prompt, task_name, llm_mode, system_prompt, use_few_shot):
     return prompt, system or ""
 
 
+def _finish_native_response(raw, *, thinking_prefilled, stop_sequences=None):
+    # Qwen3.5 opens <think> in the input. Qwen3/Gemma4 can emit the opener
+    # themselves. An unfinished thought must not become the downstream caption.
+    answer_start = 0
+    incomplete = (
+        "The model did not produce a final answer within Max tokens. "
+        "No caption was returned; reasoning has been kept out of the caption output."
+    )
+    while thinking_prefilled or raw[answer_start:].lstrip().startswith("<think>"):
+        end = raw.find("</think>", answer_start)
+        if end < 0:
+            raise RuntimeError(incomplete)
+        answer_start = end + len("</think>")
+        thinking_prefilled = False
+    if answer_start and not raw[answer_start:].strip():
+        raise RuntimeError(incomplete)
+    # Stops belong to the answer, not to incidental words in its reasoning.
+    positions = [raw.find(stop, answer_start) for stop in stop_sequences or []
+                 if stop and raw.find(stop, answer_start) >= 0]
+    if positions:
+        raw = raw[:min(positions)]
+    if answer_start:
+        answer, _ = clean_model_output(raw[answer_start:])
+        _, raw_output = clean_model_output(raw)
+        return answer, raw_output
+    return clean_model_output(raw)
+
+
 def generate_comfyui(
     instance: ComfyTextEncoder, *, prompt: str, task_name: str, llm_mode: str | None,
     system_prompt: str | None, use_few_shot: bool, image, max_tokens: int,
     do_sample: bool, temperature: float, top_k: int, top_p: float, min_p: float,
     repetition_penalty: float, seed: int, stop_sequences=None,
+    enable_thinking: bool = True,
 ) -> tuple[str, str]:
-    if instance.clip is None:
-        raise RuntimeError("The native text encoder has been unloaded; run the node again.")
     if image is not None and not instance.has_vision:
         raise ValueError("This text encoder does not contain vision weights.")
     prompt, system = _prepare_prompt(prompt, task_name, llm_mode, system_prompt, use_few_shot)
     if image is not None and image.ndim == 3:
         image = image.unsqueeze(0)
-    options = {"image": image, "skip_template": False, "min_length": 1, "thinking": False, "system_prompt": system}
+    # The loader supplies its per-node choice (default off). Keep the existing
+    # policy for callers such as Detection that do not expose this control.
+    # Native tokenizers own their model-specific thinking/non-thinking template.
+    options = {"image": image, "skip_template": False, "min_length": 1,
+               "thinking": enable_thinking, "system_prompt": system}
     architecture = instance.architecture
+    thinking_prefilled = enable_thinking and architecture.startswith("QWEN35_") and not prompt.startswith("<|im_start|>")
     if architecture in {"QWEN3_06B", "QWEN25_7B"}:
         # These older native tokenizers lack system_prompt support (Anima is
         # entirely raw). Use their model's chat tokens without a second wrapper.
         media = "<|vision_start|><|image_pad|><|vision_end|>" * (len(image) if image is not None else 0)
         prefix = f"<|im_start|>system\n{system}<|im_end|>\n" if system else ""
         prompt = f"{prefix}<|im_start|>user\n{media}{prompt}<|im_end|>\n<|im_start|>assistant\n"
-        if architecture == "QWEN3_06B":
+        if architecture == "QWEN3_06B" and not enable_thinking:
             prompt += "<think>\n\n</think>\n\n"
         if architecture == "QWEN25_7B" and image is not None:
             options["images"] = [image[i:i + 1] for i in range(len(image))]
@@ -166,18 +203,21 @@ def generate_comfyui(
         content = f"{system}\n\n{prompt}" if system else prompt
         prompt = f"<start_of_turn>user\n{content}<end_of_turn>\n<start_of_turn>model\n"
 
-    clip = instance.clip
-    with torch.inference_mode():
+    with instance.generation_lock, torch.inference_mode():
+        clip = instance.clip
+        if clip is None:
+            raise RuntimeError("The native text encoder has been unloaded; run the node again.")
         tokens = clip.tokenize(prompt, **options)
-        generated = clip.generate(
-            tokens, do_sample=bool(do_sample and temperature > 0), max_length=max_tokens,
-            temperature=temperature if temperature > 0 else 1.0, top_k=top_k,
-            top_p=top_p, min_p=min_p, repetition_penalty=repetition_penalty, seed=seed,
-        )
+        with gguf_generation_reserve(clip, tokens, max_tokens, architecture), description_thinking_budget(
+            clip, architecture, task_name, max_tokens, prefilled=thinking_prefilled, enabled=enable_thinking,
+        ) as budget_options:
+            generated = clip.generate(
+                tokens, do_sample=bool(do_sample and temperature > 0), max_length=max_tokens,
+                temperature=temperature if temperature > 0 else 1.0, top_k=top_k,
+                top_p=top_p, min_p=min_p, repetition_penalty=repetition_penalty, seed=seed,
+                **budget_options,
+            )
         raw = clip.decode(generated)
     # ComfyUI does not accept arbitrary string stops. Apply Nova's output stop
     # contract after decoding; native EOS stopping still runs inside generate().
-    positions = [raw.find(stop) for stop in stop_sequences or [] if stop and stop in raw]
-    if positions:
-        raw = raw[:min(positions)]
-    return clean_model_output(raw)
+    return _finish_native_response(raw, thinking_prefilled=thinking_prefilled, stop_sequences=stop_sequences)

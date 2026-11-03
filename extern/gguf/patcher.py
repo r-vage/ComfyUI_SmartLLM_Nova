@@ -2,6 +2,7 @@
 # Adapted for SmartLLM Nova: patcher only, without node/folder registration.
 import collections
 import logging
+from contextlib import contextmanager
 
 import comfy.float
 import comfy.lora
@@ -18,6 +19,45 @@ logger = logging.getLogger(__name__)
 
 class GGUFModelPatcher(comfy.model_patcher.ModelPatcher):
     patch_on_device = False
+    generation_memory_required = 0
+
+    @contextmanager
+    def reserve_generation_memory(self, memory_required):
+        previous = self.generation_memory_required
+        self.generation_memory_required = max(0, memory_required)
+        try:
+            yield
+        finally:
+            self.generation_memory_required = previous
+
+    def partially_load(self, device_to, extra_memory=0, force_patch_weights=False):
+        mm = comfy.model_management
+        reserved = 0
+        before = self.loaded_size()
+        if (self.generation_memory_required and not mm.is_device_cpu(device_to)
+                and device_to != self.offload_device):
+            reserved = max(mm.minimum_inference_memory(),
+                           self.generation_memory_required + mm.extra_reserved_memory())
+            available = mm.get_free_memory(device_to)
+            if available + before <= reserved:
+                raise RuntimeError(
+                    f"Qwen GGUF generation needs approximately {reserved / 1024**3:.1f} GiB "
+                    "of free workspace. Reduce the input image size, prompt length or max_tokens."
+                )
+            if before:
+                # Do not refill a cached model into its generation workspace.
+                extra_memory = min(extra_memory, available - reserved)
+        result = super().partially_load(device_to, extra_memory, force_patch_weights)
+        if reserved:
+            # Let the native loader prioritize large weights first, then evict
+            # smaller layers for generation. Reducing its initial load budget
+            # double-counts native transfer buffers and can offload the entire
+            # model merely because its vocabulary tables are large.
+            missing = reserved - mm.get_free_memory(device_to)
+            if missing > 0:
+                self.partially_unload(self.offload_device, missing, force_patch_weights=force_patch_weights)
+            return self.loaded_size() - before
+        return result
 
     def patch_weight_to_device(self, key, device_to=None, inplace_update=False):
         if key not in self.patches:
@@ -74,12 +114,18 @@ class GGUFModelPatcher(comfy.model_patcher.ModelPatcher):
     def pin_weight_to_device(self, key):
         op_key = key.rsplit(".", 1)[0]
         if not self.mmap_released and self.named_modules_to_munmap and op_key in self.named_modules_to_munmap:
-            # TODO: possible to OOM, find better way to detach
-            self.named_modules_to_munmap[op_key].to(self.load_device).to(
-                self.offload_device,
-            )
+            self._detach_mmap(self.named_modules_to_munmap[op_key])
             del self.named_modules_to_munmap[op_key]
         super().pin_weight_to_device(key)
+
+    def _detach_mmap(self, module):
+        # Copy directly on the offload device. A GPU round trip can OOM even
+        # though the layer is deliberately excluded from the resident weights.
+        for name, parameter in module.named_parameters(recurse=False):
+            copied = parameter.to(device=self.offload_device, copy=True)
+            comfy.utils.set_attr_param(module, name, copied)
+        for name, buffer in module.named_buffers(recurse=False):
+            setattr(module, name, buffer.to(device=self.offload_device, copy=True))
 
     mmap_released = False
     named_modules_to_munmap = None
@@ -109,8 +155,7 @@ class GGUFModelPatcher(comfy.model_patcher.ModelPatcher):
             if linked and self.load_device != self.offload_device:
                 logger.info(f"Attempting to release mmap ({len(linked)})")
                 for n, m in linked:
-                    # TODO: possible to OOM, find better way to detach
-                    m.to(self.load_device).to(self.offload_device)
+                    self._detach_mmap(m)
             self.mmap_released = True
             self.named_modules_to_munmap = {}
 
@@ -126,6 +171,7 @@ class GGUFModelPatcher(comfy.model_patcher.ModelPatcher):
         n.named_modules_to_munmap = dict(getattr(self, "named_modules_to_munmap", None) or {})
         n.patch_on_device = getattr(self, "patch_on_device", False)
         n.mmap_released = getattr(self, "mmap_released", False)
+        n.generation_memory_required = 0
         if src_cls != GGUFModelPatcher:
             n.size = 0  # force recalc
         return n

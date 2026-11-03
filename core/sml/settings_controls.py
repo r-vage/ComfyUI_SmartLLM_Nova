@@ -81,8 +81,9 @@ def settings_fields(kind, *, models=None, task_names=None, defaults=None):
                 default=int(defaults.get("image_max_tokens", 2048)),
                 min=1,
                 max=32768,
-                step=1,
+                step=128,
                 tooltip="The maximum number of tokens the model is allowed to generate in its response. "
+                "Adjust in steps of 128, or type any whole-token limit. "
                 "Lower limits prevent long-winded answers and save generation time.",
             ),
             # Append so saved native helper widget values retain their positions.

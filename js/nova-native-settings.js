@@ -59,7 +59,7 @@ function watchWidget(widget, listener) {
         record = { previous: widget.callback, listeners: new Set() };
         record.callback = function (...args) {
             const result = record.previous?.apply(this, args);
-            for (const notify of record.listeners) notify();
+            for (const notify of record.listeners) notify(...args);
             return result;
         };
         widget.callback = record.callback; widgetListeners.set(widget, record);
@@ -136,6 +136,13 @@ export function bindSettings(node, group) {
     }
     const unwatch = [watchWidget(model?.widget, () => { void refresh(true); }),
         watchWidget(system?.widget, () => updateControls())];
+    const tokens = group.own.has('max_tokens') ? group.fields.get('max_tokens')?.widget : null;
+    if (tokens) unwatch.push(watchWidget(tokens, value => {
+        // ComfyUI's INT callback snaps to the step grid. Token steps are only
+        // an editing convenience: retain typed integers and relative increments.
+        if (Number.isFinite(value)) tokens.value = Math.max(tokens.options.min ?? 1,
+            Math.min(tokens.options.max ?? 32768, Math.round(value)));
+    }));
     void refresh();
     return {
         refresh,

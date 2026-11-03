@@ -1,3 +1,44 @@
+## 2026-11-03
+
+### Version: 1.1.11
+
+- **Feat**
+  - Add native Qwen3.5 dense GGUF text and vision loading, including compatible Qwen3.8-27B checkpoints and optional MTP weights. Restore hybrid-attention tensor layouts, retain quantized projections, and validate the model's matching vision projector.
+  - Add a Thinking button to the LM Loader Mode bar for native ComfyUI encoders, defaulting to off. Save the choice per node, apply it throughout task chains, and default older workflows to off.
+- **Fix**
+  - Allow native encoders to use supported thinking templates and keep reasoning out of the caption. Bound native Qwen description thinking to 128 tokens or one quarter of the total, then continue the caption in the same pass; preserve natural completion and isolate cached generation state. Give Ultra Detailed fuller visual coverage and connected paragraphs while retaining example content.
+  - Adjust LM Loader and native LM Settings token limits in steps of 128 while retaining manually entered integer limits. Refresh the bundled NSFW few-shot example from the current user configuration.
+  - Simplify caption prompts and pose examples while retaining action, visible people and appearance, overall pose, camera angle, background, and lighting. Preserve full NSFW scene coverage, anatomical terms, size descriptions, and explicit actions across modes; remove rigid sentence limits and omit unshown details silently. Upgrade recognized bundled entries while preserving customizations.
+  - Select NSFW system prompts together with NSFW training examples, including native ComfyUI encoders. Keep the added NSFW instructions in the separate prompt file, use Standard prompts when Training is off, and preserve custom system-prompt overrides.
+  - Reserve generation workspace when loading native Qwen3.5 GGUF encoders so ComfyUI can leave more weights in system RAM, including for larger requests on cached models. Detach mapped offloaded weights directly on CPU to avoid temporary VRAM spikes.
+- **Changed files**
+  - .defaults/config/llm_few_shot_training.json.example
+  - .defaults/config/llm_few_shot_training_nsfw.json.example
+  - .defaults/config/system_prompts.json.example
+  - .defaults/config/system_prompts_nsfw.json.example
+  - Readme/Smart_LM_Loader_Guide.md
+  - core/migration.py
+  - core/sml/backend_comfyui.py
+  - core/sml/config_templates.py
+  - core/sml/gguf_memory.py
+  - core/sml/gguf_metadata.py
+  - core/sml/gguf_qwen35.py
+  - core/sml/gguf_text_encoders.py
+  - core/sml/native_thinking.py
+  - core/sml/settings_controls.py
+  - core/sml/tasks.py
+  - extern/gguf/README.md
+  - extern/gguf/dequant.py
+  - extern/gguf/loader.py
+  - extern/gguf/mappings.py
+  - extern/gguf/ops.py
+  - extern/gguf/patcher.py
+  - extern/gguf/qwen35.py
+  - js/nova-native-settings.js
+  - js/nova-panel-form.js
+  - py/RvLoader_SmartLMLoader.py
+  - pyproject.toml
+
 ## 2026-11-01
 
 ### Version: 1.1.10

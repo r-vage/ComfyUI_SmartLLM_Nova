@@ -90,9 +90,13 @@ def read_gguf_header(signature: tuple) -> GGUFHeader:
                 raise ValueError("GGUF array exceeds the inspection limit.")
             arrays[key] = count
             if key.startswith("comfy.gguf.orig_shape."):
-                if subtype != 5 or not 1 <= count <= 4:
+                if subtype != 5 or not 1 <= count <= 5:
                     raise ValueError("Invalid original GGUF tensor shape.")
                 metadata[key] = tuple(reader.number("i") for _ in range(count))
+            elif key in {"qwen35.rope.dimension_sections", "qwen35.attention.recurrent_layers"}:
+                if subtype not in _SCALARS or not 1 <= count <= 128:
+                    raise ValueError("Invalid Qwen3.5 layout metadata.")
+                metadata[key] = tuple(reader.number(_SCALARS[subtype]) for _ in range(count))
             elif subtype in _SCALARS:
                 reader.skip(count * struct.calcsize(_SCALARS[subtype]))
             elif subtype == 8:
