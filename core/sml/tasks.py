@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 
 from .logger import log
+from .scene_motion import SCENE_DESCRIPTION_TASK, SCENE_MOTION_TASK, SCENE_TASK_PROMPTS
 
 _LOG_PREFIX = "Tasks"
 
@@ -287,6 +288,8 @@ ALL_TASKS: tuple[Task, ...] = (
     TASK_DETAILED_ANALYSIS,
     TASK_TAGS,
     TASK_VIDEO_SUMMARY,
+    Task(SCENE_MOTION_TASK, "vision", True),
+    Task(SCENE_DESCRIPTION_TASK, "vision", True),
     TASK_OCR,
     TASK_PG_ANALYSE,
     TASK_PG_MIXED,
@@ -455,6 +458,8 @@ def get_system_prompt(task_name: str) -> str:
                 ),
                 "",
             )
+    if task_name in SCENE_TASK_PROMPTS and not prompt:
+        prompt = SCENE_TASK_PROMPTS[task_name]
     if task_name in H3_MODE_METADATA and _H3_MUSIC_INTENT_POLICY not in prompt:
         prompt = (
             f"{prompt.rstrip()}\n\n{_H3_MUSIC_INTENT_POLICY}"

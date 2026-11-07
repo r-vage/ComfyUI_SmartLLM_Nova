@@ -1466,6 +1466,8 @@ def generate_sglang(
         # SGLang accepts top_k / repetition_penalty / min_p via extra_body on its
         # OpenAI-compat endpoint (not standard OpenAI fields).
         extra_body: Dict[str, Any] = {}
+        if "enable_thinking" in kwargs:
+            extra_body["chat_template_kwargs"] = {"enable_thinking": kwargs["enable_thinking"]}
         if top_k and top_k > 0:
             extra_body["top_k"] = top_k
         if repetition_penalty and repetition_penalty != 1.0:

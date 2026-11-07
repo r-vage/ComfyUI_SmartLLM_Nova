@@ -17,6 +17,15 @@ _LOG_PREFIX = "Defaults"
 _MANIFEST_NAME = ".manifest.json"
 _DEFAULT_VALUE_UPGRADES = {
     Path("config/system_prompts.json"): {
+        "Scene Motion Analysis": (
+            "2d19990115e48056b4c03bcad313bf29905a1a081bebdeaa0316047d2b73e724",
+            "7c79a5b1737f0da4534f7e73ad0393825db7527045f39e911cc02cd4d5080197",
+            "37c6e3222199c1bfdabd741cbe0d20c6d00bf052eba5850c20823542ee753e7c",
+            "fd31bf57908fa3c5ae71737962a29a2032266a860eaa5c603c3c24557764201b",
+            "4eaa0d61488fb8b2ccabc649aeac083b79072fb6494228b9029e6a621f2d1d1f",
+            "1ddd6fd73194869e50d35bac16436a52028e59d53e98547b5ea6506e3c972115",
+            "fe779c2bf14f1dd2523ebd6ac0ece1ccee455fa6bfe767d4bfc53704bcaa1d35",
+        ),
         "Simple Description": (
             "041c44d1996e1c159dcc9ea5151d0bded5a1c752ed3427a3de088bc34ed3adc0",
             "6c9dbece46a6351d5ae1b5f1b0b425fe00be57faf2ed2b208c6a9b729b92c348",
@@ -135,6 +144,30 @@ _DEFAULT_VALUE_UPGRADES = {
         ),
     },
     Path("config/system_prompts_nsfw.json"): {
+        "MiniMax H3 Scene": (
+            "0dc68da3d35ad2bf333918a87f975b10cbfa3cd561a19f2dac0694836090ec7f",
+        ),
+        "MiniMax H3 T2VA Timeline": (
+            "e73f1481789e886857611e630339c6257d91fd047ffa15ea81c7a3fb023d0f23",
+        ),
+        "MiniMax H3 I2VA Timeline": (
+            "4777b732afb13c79fd7c31894dfd16cd3676f9d3b40a9da1dd63888cbe7307b0",
+        ),
+        "MiniMax H3 FL2VA Timeline": (
+            "8c953cba33cdce074ba52bd8a2a9d76b10fd40736309726d424ad1acd890374e",
+        ),
+        "MiniMax H3 L2VA Timeline": (
+            "46635e63f79cbb235782b7def702f39c978d9d627ee348f5e22b81f89b744880",
+        ),
+        "Scene Motion Analysis": (
+            "2d19990115e48056b4c03bcad313bf29905a1a081bebdeaa0316047d2b73e724",
+            "7c79a5b1737f0da4534f7e73ad0393825db7527045f39e911cc02cd4d5080197",
+            "37c6e3222199c1bfdabd741cbe0d20c6d00bf052eba5850c20823542ee753e7c",
+            "fd31bf57908fa3c5ae71737962a29a2032266a860eaa5c603c3c24557764201b",
+            "4eaa0d61488fb8b2ccabc649aeac083b79072fb6494228b9029e6a621f2d1d1f",
+            "1ddd6fd73194869e50d35bac16436a52028e59d53e98547b5ea6506e3c972115",
+            "fe779c2bf14f1dd2523ebd6ac0ece1ccee455fa6bfe767d4bfc53704bcaa1d35",
+        ),
         "Simple Description": (
             "b8743371674846abe85fcfa070a9c2ab37e9eedd52a09e46dff6f8f09e14f8f8",
         ),
@@ -192,6 +225,9 @@ _DEFAULT_VALUE_UPGRADES = {
         "ltx_2.3_i2v": "ddddcb90ebc4292ae937be87f8fe1d542e6ab55416fc777a56dd44208ea4a397",
     },
     Path("config/llm_few_shot_training_nsfw.json"): {
+        "minimax_h3_t2va_timeline": (
+            "8765d411ab0a4e3206cf3d2ea8d82784b1f656eaf67332f81c2efc9628d4a9ca",
+        ),
         "simple_description": (
             "7d9c53aff8e0665d301dcc9828dabf2d28e2a5d90e0eeea346ca32548400f6ba",
             "e01a31c550c8037295eefa485c80ad28beaea429a352d5ee801d09961828a312",

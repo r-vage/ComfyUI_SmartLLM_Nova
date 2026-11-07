@@ -19,7 +19,7 @@ identity, acquisition, and trust decisions explicit.
 Version **1.0.0** is the initial Nova release. It includes five panel editors and runs independently of Eclipse.
 
 
-[![ComfyUI tested on 0.38.0](https://img.shields.io/badge/ComfyUI-tested%200.42.1-orange)](https://github.com/comfyanonymous/ComfyUI)
+[![ComfyUI tested on 0.42.1](https://img.shields.io/badge/ComfyUI-tested%200.42.1-orange)](https://github.com/comfyanonymous/ComfyUI)
 [![Platform](https://img.shields.io/badge/tested-Linux%20Mint%2022.3-blue)](https://linuxmint.com/)
 [![GPU](https://img.shields.io/badge/tested-RTX%204070%20Ti%20SUPER%20(SM89)-76b900)](https://www.nvidia.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green)](LICENSE)
@@ -36,6 +36,9 @@ chained tasks, detection, converters and Registry Manager, including its
 
 - **One language-model node** adapts to vision, text, and tagger families instead
   of exposing every backend control at once.
+- **Independent image handling** selects individual images or an ordered sequence,
+  with longest-side resizing and frame stride. Scene tasks describe transferable
+  motion or full scenes for text-to-video.
 - **One detection node** covers Florence and Qwen grounding tasks alongside YOLO
   bounding-box and segmentation models.
 - **A matching postprocessor** converts structured detections into selectable
@@ -75,8 +78,10 @@ STRING outputs to **Smart LM Prompt Pipe** and wire its `settings` output into
 the loader's `pipe_opt`. The prompt-only node can also pass through native
 settings while overriding their prompts.
 
-The image input is optional for text-only tasks. Output sockets return generated
-text plus an image when the selected task supports one.
+Text tasks such as refinement and tag conversion work with text alone. With a
+vision-capable model, images can also provide context alongside the user prompt;
+the selected task's instructions remain active. Without images, image grouping,
+sizing and stride are inactive. Ordinary image inputs pass through to the output.
 
 Some generative tasks intentionally use `user_prompt` as their source material:
 
@@ -137,18 +142,56 @@ prompt. They do not configure the downstream MiniMax H3 encoder. Connect the
 actual first/last keyframes to that encoder separately, in the order its workflow
 requires; the FL2VA prompt-writing task does not require its optional last-frame
 reference when the encoder already receives that frame.
+Enable **Together** in Image handling when supplying both endpoint images to the loader.
 
 ### Use the mode bar and sections
 
 The top mode bar controls `Cleanup`, `Keep loaded`, `Multi-task`, `Training`, `Standard`/`NSFW`,
-`Sampling` and `Local seed`. Open **Model** for model/quantization/task selection,
+`Sampling`, `Thinking` on supported backends, and `Local seed`. Open **Model** for model/quantization/task selection,
 Registry, Delete and Refresh actions. Deletion requires confirmation.
+
+Open **Image handling** below Model for **Together**, **Longest side** and
+**Every Nth frame**. Together sends the ordered selection in one request; Off
+processes each image separately. Longest side `0` uses automatic model limits;
+a positive value reduces images within those limits. Stride applies to Together
+and keeps both endpoints. These settings remain available with Model collapsed
+and with Direct Chat selected. See [image sequences](Readme/Smart_LM_Loader_Guide.md#image-sequences-and-scene-motion)
+for legacy frame limits and bounded sampling.
 
 Open **Prompt**, **Generation**, **Sampling**, **Hardware**, **Tagging** or **Seed**
 to edit the relevant settings. Pin sections to keep several open. Collapsing a
 section preserves its values and does not disable processing. `Sampling` controls
 whether custom sampling parameters are applied. `Local seed` can be turned off
 when `seed_input` is connected; the upstream value then takes priority.
+
+**Standard/NSFW** selects the system-prompt profile independently of **Training**.
+Training adds examples to the prompt; turning it off retains the selected profile
+and does not modify model weights. **Thinking** defaults off and requests reasoning
+only where the model/backend supports it. Reasoning shares **Max tokens** with the
+answer, so allow enough output space for complete structured responses.
+
+### Describe scene motion
+
+Use **Together: On** with an ordered frame selection and choose:
+
+| Task | Output focus |
+| --- | --- |
+| **Scene Motion Analysis** | Framing, existing poses, movement and expression for a separate character reference |
+| **Scene Description (T2V)** | Visible appearance, setting, framing and movement for text-to-video |
+
+Both tasks produce a generation paragraph and structured observations in the same
+call. Exactly black frames are filtered before inference; an all-black selection
+keeps a black-screen result. Usable descriptions with content warnings remain
+available for manual editing. Invalid JSON or missing required fields can trigger
+one correction attempt and still fail if the structure remains unusable.
+
+Smart LM describes the supplied frames. For measured scene boundaries, bounded
+disk sampling and H3 part-prompt export, connect the optional
+[Eclipse Nova scene-analysis nodes](https://github.com/r-vage/ComfyUI_Eclipse_Nova/blob/main/Readme/Scene_Analysis.md).
+Connect Scene Frame Sampler's `frame_source` to the loader's matching input to
+avoid retaining full image batches in the loop.
+See [scene motion and image handling](Readme/Smart_LM_Loader_Guide.md#image-sequences-and-scene-motion)
+for task contracts, frame limits and review guidance.
 
 ### Chain tasks in one execution
 
@@ -250,7 +293,7 @@ preserved.
 
 | Node | Inputs | Outputs | Purpose |
 | --- | --- | --- | --- |
-| `Smart LM Loader [SmartLLM Nova]` | optional images, seed and `pipe_opt`; panel configuration | image, text | Run registered vision-language, text, or WD14 models |
+| `Smart LM Loader [SmartLLM Nova]` | optional images or `frame_source`, seed and `pipe_opt`; panel configuration | image, text | Run vision-language, text or WD14 models; lazy frame input returns no image passthrough |
 | `Smart Detection [SmartLLM Nova]` | image; optional seed and `pipe_opt` for settings/query text; panel configuration | image, mask, SEGS, data | Run Florence/Qwen grounding or YOLO detection |
 | `Smart LM Settings [SmartLLM Nova]` | native model, task, quantization, user/system prompts and token controls | settings | Supply LM settings through `pipe_opt`, including promoted subgraph widgets |
 | `Smart LM Prompt Pipe [SmartLLM Nova]` | optional user/system prompt strings and existing settings pipe | settings | Supply external prompts through `pipe_opt` without native settings widgets |
@@ -272,6 +315,7 @@ with the original pack need explicit node replacement to use Nova.
 
 | Path | Typical use |
 | --- | --- |
+| ComfyUI text encoders | Compatible local native text/vision encoders, including supported Qwen GGUF models with matching projectors |
 | Transformers | Local Hugging Face vision-language and text models, including Qwen, Florence, Mistral, and LLaVA-family models |
 | GGUF / llama.cpp | Quantized local language and vision-language execution |
 | Ollama | Models served by an Ollama runtime |

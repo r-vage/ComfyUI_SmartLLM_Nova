@@ -1141,6 +1141,8 @@ def generate_llamacpp(
         "top_p": top_p,
         "stream": False,
     }
+    if "enable_thinking" in kwargs:
+        payload["chat_template_kwargs"] = {"enable_thinking": kwargs["enable_thinking"]}
 
     if top_k and top_k > 0:
         payload["top_k"] = top_k

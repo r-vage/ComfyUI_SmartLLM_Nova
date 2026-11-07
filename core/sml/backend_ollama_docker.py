@@ -1912,6 +1912,7 @@ def generate_with_ollama(
     mirostat_tau: float = 5.0,
     repeat_last_n: int = 64,
     stop_sequences: Optional[List[str]] = None,
+    enable_thinking: bool = False,
 ) -> Optional[str]:
     # Generate text using Ollama API.
     #
@@ -1966,7 +1967,7 @@ def generate_with_ollama(
         "messages": messages,
         "options": options,
         "stream": False,
-        "think": False,  # Disable thinking mode (qwen3.5 etc.)
+        "think": enable_thinking,
     }
 
     request_timeout = get_ollama_request_timeout()
@@ -2042,6 +2043,7 @@ def generate_with_ollama_vision(
     mirostat_tau: float = 5.0,
     repeat_last_n: int = 64,
     stop_sequences: Optional[List[str]] = None,
+    enable_thinking: bool = False,
 ) -> Optional[str]:
     # Generate text with vision using Ollama API.
     #
@@ -2164,7 +2166,7 @@ def generate_with_ollama_vision(
         "messages": chat_messages,
         "options": vision_options,
         "stream": False,
-        "think": False,  # Disable thinking mode (qwen3.5 etc.) — uses all tokens on reasoning, leaves content empty
+        "think": enable_thinking,
     }
 
     request_timeout = get_ollama_request_timeout()
@@ -2270,7 +2272,7 @@ def generate_with_ollama_vision(
         "images": images or [],
         "options": fallback_options,
         "stream": False,
-        "think": False,  # Disable thinking mode
+        "think": enable_thinking,
     }
 
     if system_prompt:
@@ -2343,6 +2345,7 @@ def generate_ollama(
     mirostat_tau: float = 5.0,
     repeat_last_n: int = 64,
     stop_sequences: Optional[List[str]] = None,
+    enable_thinking: bool = False,
     **kwargs,
 ):
     # High-level generation function for SmartLoader v2 integration.
@@ -2576,6 +2579,7 @@ def generate_ollama(
             mirostat_tau=mirostat_tau,
             repeat_last_n=repeat_last_n,
             stop_sequences=stop_sequences,
+            enable_thinking=enable_thinking,
         )
     else:
         # Text-only generation
@@ -2595,6 +2599,7 @@ def generate_ollama(
             mirostat_tau=mirostat_tau,
             repeat_last_n=repeat_last_n,
             stop_sequences=stop_sequences,
+            enable_thinking=enable_thinking,
         )
 
     if result is None:

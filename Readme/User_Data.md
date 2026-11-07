@@ -16,10 +16,14 @@ Themes use their own once-only record, `.theme-defaults.json`. The bundled
 remain yours. Put custom themes in `themes/custom/`, then use **Reload themes** in
 Appearance. See [Node design](Node_Design.md).
 
-The loader's **Standard / NSFW** button selects `config/llm_few_shot_training.json`
-or `config/llm_few_shot_training_nsfw.json` for that node. Keep **Training** enabled
-to include the examples. Files remain user-editable; a later execution reads
-changes without changing another loader or the root configuration.
+The loader's **Standard / NSFW** button selects `config/system_prompts.json`
+or `config/system_prompts_nsfw.json` for that node, independently of **Training**.
+Training adds examples from `config/llm_few_shot_training.json` or
+`config/llm_few_shot_training_nsfw.json` for the selected profile; turning it off
+omits those examples while retaining the profile's system prompts. It does not
+train model weights. Files remain user-editable; a later execution reads changes
+without changing another loader or the root configuration. Custom system
+instructions supplied directly to a node take precedence over these prompt files.
 
 Back up the root configuration, Docker configuration, `config/`, `registry/`,
 `themes/` and the extraction records before moving an installation. Root config

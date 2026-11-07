@@ -30,6 +30,13 @@ Connect `images` for vision tasks. The local Prompt field holds extra instructio
 Smart LM Settings or the small Smart LM Prompt Pipe node to supply both prompts.
 A nonblank `system_prompt` supplies complete Direct Chat instructions for supported models.
 
+Open **Image handling** below Model for Together, Longest side and Every Nth
+frame. It can stay open or pinned while Model is collapsed. Together controls
+ordered sequence analysis independently of the selected task. Text tasks also
+accept images as context on vision models; without images, these controls do
+not require an image. See [image handling](Nova_Panels.md#image-handling-and-prompt-modes)
+for frame limits and prompt modes.
+
 **Local seed** uses the Seed section. Connect `seed_input` before disabling Local
 seed to use an upstream value. Small buttons provide −/+, random-each-run,
 last-seed and fixed-random actions. The field preserves the full 64-bit value.

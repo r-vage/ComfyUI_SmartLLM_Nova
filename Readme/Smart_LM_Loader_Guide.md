@@ -15,6 +15,7 @@ A comprehensive guide to the **Smart LM Loader** node for ComfyUI SmartLLM Nova.
     - [Inputs](#inputs)
       - [Panel settings](#panel-settings)
       - [Mode bar options](#mode-bar-options)
+      - [Image handling section](#image-handling-section)
       - [Sampling and hardware sections](#sampling-and-hardware-sections)
       - [WD14 tagging section](#wd14-tagging-section)
       - [Connection Slots](#connection-slots)
@@ -55,6 +56,9 @@ A comprehensive guide to the **Smart LM Loader** node for ComfyUI SmartLLM Nova.
     - [Image Description (Registry Model)](#image-description-registry-model)
     - [WD14 Tagging](#wd14-tagging)
     - [Text Expansion (No Image)](#text-expansion-no-image)
+    - [Audio-Video Prompt (Wan, LTX, or MiniMax H3)](#audio-video-prompt-wan-ltx-or-minimax-h3)
+    - [Song Lyrics](#song-lyrics)
+    - [Direct Chat with a Prompt Pipe](#direct-chat-with-a-prompt-pipe)
     - [Docker Backend (Ollama)](#docker-backend-ollama)
   - [Troubleshooting](#troubleshooting)
     - [Model Not in Dropdown](#model-not-in-dropdown)
@@ -65,6 +69,9 @@ A comprehensive guide to the **Smart LM Loader** node for ComfyUI SmartLLM Nova.
     - [GGUF Vision Not Working](#gguf-vision-not-working)
     - [Debug Logging](#debug-logging)
   - [Configuration Files](#configuration-files)
+  - [Image sequences and scene motion](#image-sequences-and-scene-motion)
+    - [Scene poses and ongoing motion](#scene-poses-and-ongoing-motion)
+    - [Concise scene observations and black-frame filtering](#concise-scene-observations-and-black-frame-filtering)
 
 ---
 
@@ -77,7 +84,7 @@ The **Smart LM Loader** is a unified node for loading and running vision-languag
 - **Image Analysis** — describe, analyze, and extract information from images
 - **Text Generation** — chat, expand prompts, translate, summarize
 - **Tag Generation** — WD14 tagger with booru-style output
-- **Video Analysis** — summarize video sequences (Qwen)
+- **Video Analysis** — summarize frame sequences or extract scene motion/full descriptions with compatible vision models
 - **Prompt Pipelines** — chain up to 4 tasks sequentially via multi-task mode
 - **OCR** — extract text from images
 
@@ -91,11 +98,13 @@ The **Smart LM Loader** is a unified node for loading and running vision-languag
 |---------|-------------|
 | **Registry-Based Model Selection** | Unified dropdown with 50+ models grouped by backend — no templates, no manual paths |
 | **Auto-Download** | Full repositories download from Hugging Face; targeted GGUF/mmproj files can also use ModelScope, with immutable revision and integrity verification |
-| **8 Backends** | Transformers, GGUF, vLLM, SGLang, Ollama, llama.cpp, YOLO, WD14 |
+| **Backends** | ComfyUI text encoders, Transformers, GGUF, vLLM, SGLang, Ollama, llama.cpp and WD14; YOLO uses Smart Detection |
+| **Image Handling** | Independent Together toggle, longest-side sizing and frame stride; text-only requests need no images |
+| **Scene Tasks** | Motion for a separate image reference or full T2V descriptions, with generation prose and observations in one response |
 | **Multi-Task Chaining** | Chain 2–4 sequential tasks with output→input flow |
 | **Few-Shot Training** | Per-task example pairs (user-editable in `config/`), toggleable via **Training** button |
 | **Editable System Prompts** | Customize per-task instructions in `config/system_prompts.json` (Standard) or `config/system_prompts_nsfw.json` (NSFW) |
-| **Mode Bar** | Cleanup, Keep loaded, Multi-task, Training, Standard/NSFW, Sampling, Thinking (native encoders), Local seed |
+| **Mode Bar** | Cleanup, Keep loaded, Multi-task, Training, Standard/NSFW, Sampling, Thinking (supported backends), Local seed |
 | **Persist-on-Execute** | Advanced parameters (temperature, top_p, etc.) saved to defaults on each run |
 | **Docker Lifecycle** | Auto-start/stop containers, stale image detection |
 | **Image Passthrough** | Input images flow through to the output for downstream nodes |
@@ -138,20 +147,40 @@ progress.
 | **Keep Loaded** | OFF | Cache model in VRAM between runs |
 | **Multi-Task** | OFF | Enable sequential task chaining (shows task_2/3/4) |
 | **Sampling** | ON | Enable custom sampling values |
-| **Thinking** | OFF | Native ComfyUI encoders only. Enable supported reasoning templates; off requests a direct answer. Saved per node, including multi-task chains. Older workflows without this choice default to off. |
-| **Standard / NSFW** | Standard | Select this node's system prompts and training examples. The button switches between Standard and NSFW; it is inactive while Training is off. Other nodes and root config are unchanged. |
-| **Training** | ON | Include few-shot training examples in the prompt. Disable to omit examples and use Standard system prompts; task instructions still load. |
+| **Thinking** | OFF | Requests reasoning through ComfyUI, Ollama, Transformers, vLLM, SGLang or llama.cpp server controls. The model/template must support switching. Saved per node and applied through task chains; older workflows default to off. |
+| **Standard / NSFW** | Standard | Select this node's system prompts and, when Training is on, its examples. The button remains available with Training off. Other nodes and root config are unchanged. |
+| **Training** | ON | Include few-shot training examples in the prompt. Disable to omit examples while retaining the selected Standard/NSFW system prompts. |
 | **Local seed** | ON | Use the Seed section; disable to use a connected seed_input |
 
-With **Training** enabled, **NSFW** uses `config/system_prompts_nsfw.json` and
+**NSFW** uses `config/system_prompts_nsfw.json` regardless of the Training
+switch. With **Training** enabled it also uses
 `config/llm_few_shot_training_nsfw.json`. **Standard** uses their counterparts
-without `_nsfw`. Each node keeps its selected prompts and examples stable during
+without `_nsfw`. Training supplies examples in the context; it does not train or
+modify model weights. Each node keeps its selected prompts and examples stable during
 an execution; file edits are read on the next execution. A custom system prompt
 supplied through the panel or a settings/prompt pipe takes precedence over either
 system-prompt file.
 
 The **Sampling** mode button enables custom sampling values. Model contains
 Registry, Delete and Refresh actions; full verification is available in Registry Manager.
+
+#### Image handling section
+
+Open **Image handling** below Model. It has its own collapsed summary and pin
+state, so its controls remain accessible with Model collapsed or Direct Chat
+selected.
+
+| Control | Default | Description |
+| --- | --- | --- |
+| **Together** (`image_handling`) | Off | On analyzes the ordered selection in one request; Off processes one image per request. Older saved configurations retain Legacy until changed. |
+| **Longest side** (`max_image_side`) | 0 | Zero uses automatic model limits; a positive value reduces images within those limits without enlarging the source. |
+| **Every Nth frame** (`image_stride`) | 1 | Together only; samples the supplied selection and always retains its first and last image. |
+| **Max frames** (`frame_count`) | 8 | Applicable Legacy configurations only. Explicit Together uses the supplied selection without this last-N cap. |
+
+Bound large sequences upstream with sampling or overlapping windows. For 16
+images together, supply up to 16 images and set Together On with Every Nth = 1;
+the model's own image/context limits still apply. See [image sequences and scene
+motion](#image-sequences-and-scene-motion) for the full behavior.
 
 #### Sampling and hardware sections
 
@@ -164,7 +193,6 @@ Registry, Delete and Refresh actions; full verification is available in Registry
 | **num_beams** | Integer | 1 | Beam search count. 1=greedy |
 | **do_sample** | Boolean | True | Enable sampling vs greedy decoding |
 | **repetition_penalty** | Float | 1.0 | Repeat penalty (1.0–2.0) |
-| **frame_count** | Integer | 8 | Qwen VL — video frames to analyze |
 | **use_torch_compile** | Boolean | False | torch.compile for faster inference |
 
 Panel values are saved with the workflow. Shared generation defaults are updated on execution; opening a panel does not save or acquire a model.
@@ -181,7 +209,8 @@ Panel values are saved with the workflow. Shared generation defaults are updated
 
 | Input | Type | Description |
 |-------|------|-------------|
-| **images** | IMAGE | Optional. Image input for vision tasks and WD14 |
+| **images** | IMAGE | Images for vision tasks and WD14; optional visual context for text tasks on vision-capable models |
+| **frame_source** | SMARTLLM_FRAME_SOURCE | Optional lazy frame input for bounded analysis loops; use instead of images, never both |
 | **seed_input** | INT | Optional unsigned 64-bit seed, used when Local seed is disabled |
 | **pipe_opt** | Settings | Optional Smart LM Settings or Smart LM Prompt Pipe output; carries settings and user/system prompts. See [subgraph settings](Nova_Panels.md#native-settings-and-subgraphs). |
 
@@ -203,7 +232,7 @@ or Song Lyrics.
 
 | Output | Type | Description |
 |--------|------|-------------|
-| **image** | IMAGE | Passthrough of input images (or 64×64 placeholder if no image) |
+| **image** | IMAGE | Ordinary input image passthrough, or a 64×64 placeholder without images; lazy frame_source returns an empty list |
 | **text** | STRING | Generated text or tags |
 
 ---
@@ -337,7 +366,7 @@ Local Transformers, YOLO and WD14 loading also use ComfyUI's selected device for
 
 Prompts, task chaining, image batches, connected instructions and exact seeds retain Nova's existing workflow. **Training** uses the node's Standard/NSFW examples as labeled demonstrations in the system instructions; the native tokenizer accepts a single prompt rather than a chat message list.
 
-The native encoder's **Thinking** button in the Mode bar defaults to **off** and
+The **Thinking** button in the Mode bar defaults to **off**. Native ComfyUI
 requests the tokenizer's non-thinking template. Turn it on to allow reasoning
 where the installed ComfyUI tokenizer supports it. Each node saves its choice in
 the workflow and applies it to every chained task; it does not change global
@@ -345,6 +374,24 @@ defaults. Older workflows without the setting use off. The caption output
 excludes reasoning; the raw output retains it. **Max tokens** covers both
 reasoning and the final answer. Nova reports a missing final answer instead of
 returning reasoning as a caption.
+
+The same button also controls Ollama (`think`), Transformers (`enable_thinking`
+in the chat template), native vLLM (`LLM.chat` template arguments), and vLLM,
+SGLang and llama.cpp servers (`chat_template_kwargs.enable_thinking`). Text and
+vision requests use the same choice. These are controls for compatible templates,
+including switchable Qwen models; they cannot disable a model that always thinks
+or add reasoning to a model that lacks it. Templates using a different control,
+such as DeepSeek's `thinking`, are not covered by the `enable_thinking` switch.
+Server answer fields are kept separate from their reasoning fields. Transformers
+also removes reasoning when its opening tag was already supplied by the template.
+Ollama and the other non-native backends share **Max tokens** between reasoning
+and the answer without the native Qwen caption budget described below. Increase
+the limit when reasoning leaves too little room for complete JSON.
+
+The installed local **GGUF / llama-cpp-python** generation API has no supported
+per-request thinking parameter. Its button remains hidden; the model's own
+template determines behavior. Florence and detector/tagger models also have no
+Thinking button. Switching backends preserves the node's saved choice.
 
 With **Thinking on**, native Qwen3/Qwen3.5 **Simple**, **Detailed**, and
 **Ultra Detailed Description** use at most 128 thinking tokens or one quarter of **Max tokens**, whichever is
@@ -509,6 +556,8 @@ ONNX Runtime for SmilingWolf WD14 tagger models.
 | **Detailed Analysis** | Analytical breakdown |
 | **Tags** | Generate comma-separated tags |
 | **Video Summary** | Summarize video frames (Qwen only) |
+| **Scene Motion Analysis** | Generation paragraph and observations for transferable camera, pose, movement and expression; separate reference supplies appearance |
+| **Scene Description (T2V)** | Generation paragraph and observations including visible appearance, setting, lighting and motion |
 | **OCR** | Extract text from image |
 
 Simple, Detailed, and Ultra Detailed each have four example pairs in both the
@@ -548,7 +597,7 @@ Updates replace recognized bundled entries while preserving customized entries.
 | **Summarize** | Summarize text |
 | **Prompt Variations** | Generate 5 variations of the same action with different manner / speed / emotion, separated by `---` |
 
-> **Note:** Text tasks work on VLM or LLM models. When a VLM has no image connected, text tasks run in text-only mode automatically.
+> **Note:** Text tasks work on VLM or LLM models. Without images they run in text-only mode. A vision-capable model can use supplied images alongside your text as context while retaining the selected task's instructions.
 
 ---
 
@@ -680,8 +729,9 @@ Docker backends are configured in `docker_config.json`:
 For explicit FL2VA, Picture 1 is the required opening-frame prompt-writing
 reference. Picture 2 is optional here because the downstream H3 encoder supplies
 and enforces the actual final frame. When both are attached, their order is
-contractual and SmartLLM keeps the pair together as one VLM reference group even
-when `frame_count` is 1. With both pictures the VLM can trace their observable
+contractual. Set **Together: On** in Image handling when supplying both images.
+Legacy configurations also preserve the pair even when `frame_count` is 1.
+With both pictures the VLM can trace their observable
 differences; with only Picture 1 it briefly describes the visible source state,
 continues into the complete `user_prompt` action timeline, avoids inventing unseen
 final-frame details, and still ends exactly on encoder-supplied Picture 2.
@@ -779,6 +829,9 @@ pip install transformers>=5.0.0
 4. Reduce `context_size`
 5. Reduce `max_tokens` when the prompt plus requested completion approaches the context window
 6. Use a smaller model
+7. Reduce **Longest side** in Image handling and the number of frames per request.
+   Together ignores the legacy Max frames cap; use upstream sampling/windows or
+   Every Nth frame to bound the selection.
 
 ### GGUF Vision Not Working
 
@@ -800,12 +853,56 @@ Enable in `config.json`:
 | `config.json` | Main config: LLM folder path, log level, HF token |
 | `docker_config.json` | Docker backend settings: ports, timeouts, images |
 | `registry/*.json` | Model registry files (8 backend files + defaults + user_models) |
-| `config/system_prompts.json` | Standard per-task system prompts (user-editable); also used when Training is off |
-| `config/system_prompts_nsfw.json` | Per-task system prompts used with Training enabled and NSFW selected (user-editable) |
+| `config/system_prompts.json` | Standard per-task system prompts, selected independently of Training (user-editable) |
+| `config/system_prompts_nsfw.json` | NSFW per-task system prompts, selected independently of Training (user-editable) |
 | `config/llm_few_shot_training.json` | Standard few-shot training examples |
 | `config/llm_few_shot_training_nsfw.json` | NSFW few-shot training examples |
 | `.defaults/` | Git-tracked defaults (`.example` suffix); extracted to repo on first run |
 
 ---
 
-*Guide for ComfyUI SmartLLM v3.3.4*
+## Image sequences and scene motion
+
+Text tasks such as **Refine & Expand Prompt**, **Tags to Natural Language** and **Natural Language to Tags** work with text alone. Without images, image grouping, sizing and frame stride do not process anything or require an image. With a vision-capable model and images, those same tasks receive both the images and your text, so the Prompt can give focus instructions or context. The selected task instructions remain active. Together sends the selected images in one request; Off sends one image per request with the corresponding text. Later multi-task stages still process the preceding text result. Models without vision weights cannot use image context, and model-specific limits still apply to supplied images.
+
+The **Image handling** section below Model contains **Together**, **Longest side** and **Every Nth frame**. It opens and collapses independently of Model, shows the current image settings in its header, and can be pinned open while other sections are used. The legacy **Max frames** control also appears here when applicable. Values are saved per node and remain available for Direct Chat and custom system instructions.
+
+- **Image handling** uses a **Together** toggle: **On** sends the ordered selection in one request; **Off** runs one request per supplied image. Older configurations show **Legacy** until clicked, preserving their saved behavior; the first click enables Together. Together bypasses the legacy last-N frame cap; upstream sampling/windowing bounds the request. Unsupported multi-image processor paths fail explicitly. Existing configurations without the switch retain their historical behavior. New H3 first/last reference configurations with two images need Together.
+- **Longest side = 0** keeps automatic model sizing. A positive value reduces input dimensions while respecting model limits and avoiding source upscaling. Dynamic patch alignment may round down. Known fixed/minimum processor sizes are checked; remote servers still own their final preprocessing. The ordinary IMAGE output retains the original input pixels.
+- **Every Nth frame** applies to Together, defaults to 1, and always includes the first and last supplied image. It samples the supplied batch, which may already have been sampled upstream. Two at 30 source fps gives 15 samples/second only when the input actually contains every original frame. Use 1 to retain brief gestures/expressions or when sampling upstream.
+
+**Scene Motion Analysis** is for image-to-video. It transfers camera geometry, posture, visible movement and expression to a separate character reference. The target reference supplies appearance and setting. The task explicitly instructs the model to keep source identity, gender, clothing, accessories, colors and environment out of every output field, including `performance_prompt`, and asks the model to check that scope before returning. The paragraph and supporting observations use the same inference; there is no additional rewriting call. Use neutral subject/body terms and one to three sentences, usually 20–50 words. Physical contact remains an action without a description of the contacted item's appearance. The schema needs no `appearance` field. These instructions guide the model; review warnings remain advisory and cannot guarantee compliance.
+
+**Scene Description (T2V)** includes relevant visible subjects, appearance, clothing, accessories, setting, lighting and motion directly in the generation paragraph. Its additional `appearance` field is optional supporting metadata. Omitting it needs no correction call; blank or structured values are retained with a review warning. Generation uses the unchanged `performance_prompt` paragraph. Both tasks use the same ordered images and one normal inference per window, with the existing bounded correction attempt for invalid output. Context may supply integer `scene_id` and `window_id` plus frame IDs/timestamps. A single image establishes a pose without invented movement. Neither task infers audio or unseen events.
+
+The loader records the actual task policy as `description_mode: motion` or `full`. The optional [Eclipse Nova scene-analysis nodes](https://github.com/r-vage/ComfyUI_Eclipse_Nova/blob/main/Readme/Scene_Analysis.md) measure cuts, collect descriptions and export H3 part prompts. The collector accepts motion results without appearance and preserves new task paragraphs without appearance rewriting. Use the H3 adapter's **exclude source appearance** with Motion Analysis, or **include source appearance** with T2V. The dropdown selects the intended policy; it cannot guarantee model compliance. Changing policy requires another analysis run because motion analysis does not request a complete appearance description. Custom system prompts remain user-owned and must follow the selected structure. Prompt compliance and observation accuracy still need review.
+
+The paragraph and observations use the same inference call; there is no extra summarizing model pass. Usable text with recognized appearance, gendered wording, excessive length or movement misplaced in boundary poses is preserved with `review_warnings`. Content warnings neither retry generation nor stop the scene loop. Eclipse saves the text and reports the warnings so you can copy part prompts into the manual inputs and edit them. These checks recognize bounded patterns and cannot establish semantic correctness.
+
+If `actions`, `gaze_expression` or `uncertainties` arrives as a text string, the loader accepts it as one list item with its wording intact. A blank string becomes an empty list. This normalization happens before validation, so it needs no correction inference. Commas are preserved rather than treated as action separators.
+
+Only structural failures—invalid JSON, missing required fields, non-text list values or mismatched IDs—use the existing single correction attempt. A complete single JSON object is accepted inside an optional prose/code-fence wrapper without another call; partial JSON, arrays and multiple competing objects remain invalid. Persistent structural failures remain errors rather than silently losing scenes. New task paragraphs pass through without text cleanup; older unmarked saved analyses retain their existing cleanup. Measured cut times come from detection. A custom system prompt intentionally replaces task instructions without changing grouping or size. Recognized older defaults upgrade in both profiles; customizations remain user-owned and must satisfy the selected structure.
+
+The structural correction retains the original images and provides the validation issue. It does not insert the rejected answer into the prompt. A usable description takes one inference, including when it needs manual content review.
+
+For file-backed loops, the optional **frame_source** socket accepts the public `SMARTLLM_FRAME_SOURCE` version-1 protocol: an object with `version == 1`, `len(source)` in 1–256 and `iter_frames()` yielding ordered HWC RGB uint8 arrays. The producer owns the files and keeps them alive. Smart LM loads/resizes only the active request, closes the iterator on failure and returns an **empty IMAGE list** for this input to avoid retaining pixels in graph caches. Do not connect both images and frame_source. Regular IMAGE passthrough is unchanged. Existing images/seed/pipe socket indices are preserved.
+
+Successful scene-task JSON receives measured `input_evidence`: selected positions, count, dimensions, grouping, longest-side setting and stride. This metadata is supplied by the loader, not inferred by the model. Eclipse's scene collector maps it to source frame IDs and presentation timestamps.
+
+Backend processors can differ in image limits and motion interpretation. Review the descriptions against their sampled frames when changing models, resolution or sampling density.
+
+### Scene poses and ongoing motion
+
+Scene Motion Analysis treats each window as an excerpt that can begin mid-gesture. Its start/end pose fields describe positions already present in the boundary frames; actions describe observed changes between frames, including small finger/wrist movements while the arms stay raised. Partial or ambiguous arcs belong in uncertainty. Recognized movement verbs in pose fields produce a review warning while preserving the description. Existing saved descriptions cannot recover motion omitted by an earlier analysis, so rerun those windows for the updated task.
+
+### Concise scene observations and black-frame filtering
+
+Scene Motion Analysis summarizes distinct motion and expression changes rather than writing an event per sampled image. It contains no example gesture to copy. Routine speech-like lip motion is summarized once; visible distinctive expressions remain relevant. These instructions improve concision but do not make model observations factual by themselves.
+
+The loader removes exactly black frames after grouping, stride and resizing, before model inference. Dark frames with any nonzero pixel remain. The request context includes only the frame IDs/timestamps actually sent, with their image count and first/last image ordinals. The model describes the first and last remaining visible samples, without instructions to interpret the omitted black images. Ordinary IMAGE passthrough is unchanged; lazy disk inputs retain no image passthrough.
+
+`input_evidence.positions` records sent positions and `omitted_black_positions` records removed positions, both zero-based within the original supplied selection. If all selected images are black, the node skips inference and emits `not visible` audit strings, a `Black screen.` performance paragraph, empty action/expression lists, `image_count: 0` and `skipped_reason: all_black`. Model loading may still occur before frame preparation. Eclipse's collector preserves these entries and maps sent and omitted positions back to measured source frames/times. Scene boundaries and audio timing do not change.
+
+Filtering applies to both scene tasks. Other tasks and custom-system-prompt Direct Chat retain their existing image behavior. Together/One by one remains an independent control; Every Nth applies only to Together. Each all-black selection skips generation, including chained tasks for that selection. Motion-only all-black results also omit appearance; T2V marks it not visible.
+
+Filtering removes empty visual evidence, but the model can still misread partially visible hands or motion between samples. Review the resulting directions before generation. Recognized bundled task prompts upgrade automatically; customized prompts are preserved.

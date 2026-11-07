@@ -18,6 +18,7 @@ from typing import Any, Optional
 
 import torch  # type: ignore
 
+from .image_inputs import sequence_request
 from .logger import log
 
 _LOG_PREFIX = "Transformers"
@@ -282,14 +283,14 @@ def _move_inputs_to_device(
     return processed
 
 
-def _apply_vlm_chat_template(processor, messages: list) -> str:
+def _apply_vlm_chat_template(processor, messages: list, **template_kwargs) -> str:
     # Apply chat template to messages, with fallback to tokenizer.
     #
     # Modern transformers processors have apply_chat_template directly.
     # Older ones may only have it on the tokenizer. Tries both.
     if hasattr(processor, "chat_template") and processor.chat_template:
         return processor.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
+            messages, tokenize=False, add_generation_prompt=True, **template_kwargs
         )
     if (
         hasattr(processor, "tokenizer")
@@ -298,11 +299,11 @@ def _apply_vlm_chat_template(processor, messages: list) -> str:
     ):
         log.debug(_LOG_PREFIX, "  Using tokenizer's chat_template (processor has none)")
         return processor.tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
+            messages, tokenize=False, add_generation_prompt=True, **template_kwargs
         )
     # Last resort: call it anyway (will raise AttributeError if not available)
     return processor.apply_chat_template(
-        messages, tokenize=False, add_generation_prompt=True
+        messages, tokenize=False, add_generation_prompt=True, **template_kwargs
     )
 
 
@@ -454,6 +455,7 @@ def generate_transformers(
     llm_mode = kwargs.get("llm_mode")
     vision_task = kwargs.get("vision_task")
     use_few_shot = kwargs.get("use_few_shot", True)
+    template_kwargs = {"enable_thinking": kwargs["enable_thinking"]} if "enable_thinking" in kwargs else {}
 
     # ── LLM text-only with llm_mode (tokenizer-based, no image processor) ──
     if image is None and llm_mode and model_family == "LLM":
@@ -472,6 +474,7 @@ def generate_transformers(
             instruction_template,
             context_size=context_size,
             use_few_shot=use_few_shot,
+            template_kwargs=template_kwargs,
         )
 
     # ── Florence2 routing (task-based paradigm, not chat) ──
@@ -513,6 +516,7 @@ def generate_transformers(
             instruction_template,
             context_size=context_size,
             use_few_shot=use_few_shot,
+            template_kwargs=template_kwargs,
         )
 
     # ── VLM routing (vision + text-only with llm_mode) ──
@@ -542,6 +546,7 @@ def generate_transformers(
         llm_mode=llm_mode,
         use_few_shot=use_few_shot,
         explicit_system_prompt=explicit_system_prompt,
+        template_kwargs=template_kwargs,
     )
 
 
@@ -587,6 +592,7 @@ def _generate_vlm(
     llm_mode: Optional[str] = None,
     use_few_shot: bool = True,
     explicit_system_prompt: Optional[str] = None,
+    template_kwargs: dict | None = None,
 ) -> Tuple[str, dict]:
     # Unified generation for all VLM families (Mistral3, QwenVL, LLaVA, Mllama).
     #
@@ -640,11 +646,14 @@ def _generate_vlm(
     )
     h3_reference_images = (
         frames
-        if get_h3_mode(vision_task or "") is not None
+        if (get_h3_mode(vision_task or "") is not None or sequence_request.get())
         and frames is not None
         and len(frames) > 1
         else None
     )
+
+    if h3_reference_images is not None and model_type not in (ModelType.QWENVL, ModelType.MISTRAL3):
+        raise ValueError("This Transformers processor has no qualified multi-image path; use One by one or a Qwen/Mistral VLM")
 
     # ── 3. BUILD MESSAGES ───────────────────────────────────────────────
     # Text-only with llm_mode: build chat messages with system + few-shot + instruction_template
@@ -881,6 +890,7 @@ def _generate_vlm(
                 return_dict=True,
                 return_tensors="pt",
                 **tpl_kwargs,
+                **(template_kwargs or {}),
             )
         except Exception as e:
             log.error(
@@ -892,7 +902,7 @@ def _generate_vlm(
     if not use_unified_template:
         try:
             formatted_text = _apply_vlm_chat_template(
-                smart_lm_instance.processor, messages
+                smart_lm_instance.processor, messages, **(template_kwargs or {})
             )
         except Exception as e:
             log.error(_LOG_PREFIX, f"Chat template error: {e}")
@@ -1571,6 +1581,7 @@ def _generate_llm(
     instruction_template: str,
     context_size: Optional[int] = None,
     use_few_shot: bool = True,
+    template_kwargs: dict | None = None,
 ) -> Tuple[str, dict]:
     # Generate text-only completion with LLM (no images) - transformers path only.
     #
@@ -1681,7 +1692,7 @@ def _generate_llm(
     try:
         # Apply chat template to convert messages to text
         input_text = smart_lm_instance.processor.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
+            messages, tokenize=False, add_generation_prompt=True, **(template_kwargs or {})
         )
 
         # Tokenize and generate
@@ -1716,11 +1727,11 @@ def _generate_llm(
         # Keep raw output for data (includes thinking tags)
         raw_text = text.strip()
 
-        # Strip reasoning/thinking tags from "Thinker" models (e.g., MiroThinker, DeepSeek-R1)
-        # These models output <think>...</think> before the actual response
-        cleaned_text = re.sub(
-            r"<think>.*?</think>\s*", "", text, flags=re.DOTALL
-        ).strip()
+        # The template may prefill <think>, leaving only its closing marker in
+        # generated text. Use the shared cleanup for both complete and orphan tags.
+        from .common import strip_thinking_tags
+
+        cleaned_text, _ = strip_thinking_tags(text)
 
         # Handle models that output untagged thinking (no <think> tags)
         # MiroThinker and similar models output reasoning like "Okay, let's tackle this..."

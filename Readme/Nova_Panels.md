@@ -14,7 +14,7 @@ never disables their processing. The mode buttons control actual features.
 
 | New editor | Controls | Connected overrides |
 | --- | --- | --- |
-| Smart LM Loader | Model, quantization where supported, tasks and chaining, prompt, generation, sampling, hardware, WD14 tagging, seed | `pipe_opt` for settings and prompts, `seed_input`; optional `images` |
+| Smart LM Loader | Model, quantization where supported, tasks and chaining, image handling, prompt, generation, sampling, hardware, WD14 tagging, seed | `pipe_opt` for settings and prompts, `seed_input`; optional `images` or lazy `frame_source` |
 | Smart Detection | Model, quantization where supported, task/classes, confidence and NMS, mask/crop adjustments, sampling, hardware, seed | `pipe_opt` for settings and query text, `seed_input`; required `image` |
 | Detection to Bboxes | Image/JSON detection, channel threshold, contour area, mask inversion/grow/blur, combined or selected masks | Required `image`, optional `data_opt` |
 | Split YuE2 | Resizable song JSON field; unchanged style and lyrics outputs | Optional `song_json` |
@@ -26,12 +26,32 @@ prompt-only IO helpers accompany these panels. Nova does not alias the original 
 
 Connected non-None override values take priority over the corresponding local
 setting. An empty prompt is a valid override. Smart LM Loader preserves prompt
-lists and image batches, multi-task chaining, task templates, per-node Standard/NSFW training examples,
+lists and image batches, multi-task chaining, task templates, per-node Standard/NSFW profiles and optional examples,
 WD14, quantization, attention, cleanup and model retention. Smart Detection
 keeps its IMAGE/MASK/SEGS/JSON list outputs. No model acquisition, trust, device,
 or backend policies are replaced by the panels.
 
 Choose **Settings → SmartLLM Nova → Appearance → Node design** for Neutral (default), Jade, Ocean, Amethyst, Amber, their Neutral color variants or a [custom JSON theme](Node_Design.md). The setting belongs only to this repo; it also updates saved node backgrounds.
+
+## Image handling and prompt modes
+
+The loader's **Image handling** section sits below Model and has its own collapse,
+pin and settings summary. **Together** switches between one request for an ordered
+image selection and one request per image. **Longest side** limits input size;
+`0` keeps automatic model limits. **Every Nth frame** samples Together selections
+while retaining both endpoints. **Max frames** appears only for applicable legacy
+configurations; explicit Together uses the supplied selection without that cap.
+
+These controls remain available in Direct Chat and with Model collapsed. Text-only
+requests ignore image handling. Vision models can also use images alongside text
+for tasks such as refinement or tag conversion. Later multi-task stages consume
+the previous text result. See the [loader guide](Smart_LM_Loader_Guide.md#image-sequences-and-scene-motion)
+for scene tasks, bounded windows and model limits.
+
+In the mode bar, **Standard/NSFW** selects system prompts independently of
+**Training**; Training adds contextual examples without changing weights.
+**Thinking** defaults off and appears for supported backend paths. The model's
+template must support it, and reasoning shares **Max tokens** with the answer.
 
 ## Native settings and subgraphs
 

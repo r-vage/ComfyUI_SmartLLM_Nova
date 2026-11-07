@@ -413,6 +413,9 @@ def generate_vllm(
         raise RuntimeError(f"vLLM not available: {e}")
 
     llm = smart_lm_instance.vllm_model
+    chat_options = {}
+    if "enable_thinking" in kwargs:
+        chat_options["chat_template_kwargs"] = {"enable_thinking": kwargs["enable_thinking"]}
 
     # Build sampling params - only include seed if it's a valid integer
     # vLLM doesn't accept seed=None, it must be omitted or a valid int
@@ -513,7 +516,7 @@ def generate_vllm(
             conversation.append({"role": "user", "content": content})
 
             log.debug(_LOG_PREFIX, f"Using chat API for vision")
-            outputs = llm.chat(conversation, sampling_params=sampling_params)
+            outputs = llm.chat(conversation, sampling_params=sampling_params, **chat_options)
 
         except Exception as e:
             log.warning(
@@ -521,6 +524,8 @@ def generate_vllm(
                 f"Vision generation failed ({type(e).__name__})",
             )
             log.debug(_LOG_PREFIX, f"Vision error details: {type(e).__name__}: {e}")
+            if chat_options:
+                raise  # A raw text fallback cannot honor the requested chat-template control.
             # Fall back to text-only
             log.warning(_LOG_PREFIX, "Falling back to text-only generation", notify=True)
             outputs = llm.generate([prompt], sampling_params=sampling_params)
@@ -593,11 +598,14 @@ def generate_vllm(
             messages.append({"role": "user", "content": prompt})
 
         log.debug(_LOG_PREFIX, f"Using chat API for LLM")
-        outputs = llm.chat(messages, sampling_params=sampling_params)
+        outputs = llm.chat(messages, sampling_params=sampling_params, **chat_options)
     else:
         # Simple text-only generation (no llm_mode)
         log.debug(_LOG_PREFIX, "Text-only generation")
-        outputs = llm.generate([prompt], sampling_params=sampling_params)
+        if chat_options:
+            outputs = llm.chat([{"role": "user", "content": prompt}], sampling_params=sampling_params, **chat_options)
+        else:
+            outputs = llm.generate([prompt], sampling_params=sampling_params)
 
     # Extract generated text
     if outputs and len(outputs) > 0:

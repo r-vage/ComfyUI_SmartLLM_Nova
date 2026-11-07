@@ -227,8 +227,8 @@ def with_training_profile(function):
         nsfw = scalar(nsfw_training)
         if type(nsfw) is not bool:
             raise ValueError("NSFW training must be enabled or disabled.")
-        enabled = scalar(kwargs.get("use_few_shot_training", True))
-        with training_profile(nsfw and enabled is True):
+        # The profile selects system instructions even when examples are off.
+        with training_profile(nsfw):
             return function(*args, **kwargs)
     return wrapped
 

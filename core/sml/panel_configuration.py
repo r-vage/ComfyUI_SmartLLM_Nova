@@ -115,6 +115,8 @@ def parse_configuration(raw, spec):
     provided = set(config["parameters"])
     if provided - set(fields) or any(not fields[key].get("optional") for key in set(fields) - provided):
         raise ValueError(f"Expected version 1 {spec['title']} configuration.")
+    if spec["kind"] == "loader" and "image_handling" in fields and "image_handling" not in provided:
+        config["parameters"]["image_handling"] = "legacy"
     config["parameters"] = {key: validate_value(config["parameters"].get(key, copy.deepcopy(field["default"])), key, field)
                             for key, field in spec["fields"].items()}
     if spec["seed"]:
@@ -153,6 +155,10 @@ class SmartLLMPanel:
         inputs = [field for field in schema.inputs
                   if field.id not in spec["fields"] and field.id != "seed"
                   and not (cls.PANEL_KIND == "loader" and field.id in LM_PROMPT_KEYS)]
+        # Add the lazy socket after established public sockets so saved links
+        # retain their images/seed/pipe slot indices.
+        frame_sources = [field for field in inputs if field.id == "frame_source"]
+        inputs = [field for field in inputs if field.id != "frame_source"]
         for key in OVERRIDES[cls.PANEL_KIND]:
             if cls.PANEL_KIND in SETTINGS_TYPES:
                 continue  # LM/detection prompts now enter through settings pipes.
@@ -167,6 +173,7 @@ class SmartLLMPanel:
             inputs.append(io.Custom(SETTINGS_TYPES[cls.PANEL_KIND]).Input(
                 "pipe_opt", optional=True,
                 tooltip="Settings and prompts override matching panel values. Missing settings use the panel."))
+        inputs.extend(frame_sources)
         inputs.append(io.String.Input("configuration", socketless=True, default=json.dumps(default_configuration(spec)),
                                       extra_dict={"widgetType": WIDGET_TYPE, "editorSpec": spec}))
         schema.inputs = inputs

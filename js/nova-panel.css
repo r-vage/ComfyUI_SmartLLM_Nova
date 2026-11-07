@@ -21,7 +21,7 @@
 .sln-panel-select > span:last-child { color: var(--sln-design-bar-text); font-size: 9px; }
 .sln-panel .sln-panel-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 5px; background: var(--sln-design-bar-bg); border: 1px solid var(--sln-design-bar-border); border-radius: 6px; font-size: 11px; }
 .sln-panel .sln-panel-bar button { color: var(--sln-design-bar-text); border: 1px solid var(--sln-design-pill-border); border-radius: var(--sln-design-pill-radius); background: transparent; padding: 3px 7px; font: inherit; }
-.sln-panel .sln-panel-bar button[aria-pressed="true"] { color: var(--sln-design-selected-text); border-color: var(--sln-design-selected-border); background: var(--sln-design-selected-bg); font-weight: bold; box-shadow: var(--sln-design-selected-shadow); }
+.sln-panel .sln-panel-bar button[aria-pressed="true"], .sln-panel .sln-panel-toggle[aria-pressed="true"] { color: var(--sln-design-selected-text); border-color: var(--sln-design-selected-border); background: var(--sln-design-selected-bg); font-weight: bold; box-shadow: var(--sln-design-selected-shadow); }
 .sln-panel .sln-panel-bar button:hover { background: var(--sln-design-bar-hover); }
 .sln-panel .sln-panel-bar .sln-panel-disclosure { display: flex; gap: 6px; align-items: center; border: 0; padding: 0; border-radius: 0; font-weight: bold; box-shadow: none; }
 .sln-panel .sln-panel-bar[data-collapsed="true"] { padding-block: 0; }

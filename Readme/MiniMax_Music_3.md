@@ -78,10 +78,8 @@ tags are preserved.
 
 ## Connect the encoder
 
-Build these connections in your own ComfyUI audio graph. SmartLLM does not ship
-a MiniMax Music 3 workflow JSON.
-
-Choose either route with a ComfyUI release providing `MiniMaxMusic3TextEncode`.
+Build either connection below in your ComfyUI audio graph, using a release
+providing `MiniMaxMusic3TextEncode`.
 
 ### Splitter with the native encoder
 

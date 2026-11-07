@@ -1952,216 +1952,6 @@
       ]
     ]
   ],
-  "minimax_h3_scene_5s": [
-    [
-      "display_name",
-      "MiniMax H3 Scene 5s"
-    ],
-    [
-      "instruction_template",
-      "Convert the input into one continuous 5-second cinematic motion prompt. Use the attached image count to select zero-image, first-frame, or ordered first/last-frame mode. Treat images as the authoritative visual source and the input as the authoritative action source; use image contents to ground the requested action without restating appearance, clothing, lighting, or scenery. Never invent names, entities, or story events. Output only the three required plain-text fields with one blank line between fields; no Markdown or questions. Always return the complete shot timeline and all three required fields; never return only image analysis, source description, soundscape, or music. Input: \"{prompt}\""
-    ],
-    [
-      "examples",
-      [
-        [
-          [
-            "role",
-            "user"
-          ],
-          [
-            "content",
-            "Convert the input into one continuous 5-second cinematic motion prompt. Use the attached image count to select zero-image, first-frame, or ordered first/last-frame mode. Treat images as the authoritative visual source and the input as the authoritative action source; use image contents to ground the requested action without restating appearance, clothing, lighting, or scenery. Never invent names, entities, or story events. Output only the three required plain-text fields with one blank line between fields; no Markdown or questions. Always return the complete shot timeline and all three required fields; never return only image analysis, source description, soundscape, or music. Input: \"A lighthouse keeper opens the storm shutters, braces against the wind, and raises a signal lamp toward a rescue boat. Use one fixed side view.\""
-          ]
-        ],
-        [
-          [
-            "role",
-            "assistant"
-          ],
-          [
-            "content",
-            "integrated_multimodal_description: [Shot 1] In a fixed side view, the keeper pulls both shutters fully open, steps back against the gust, grips the signal lamp with both hands, raises it toward the window, and holds it steady as the flame swings once and settles.\n\noverall_soundscape: The shutters bang open, hinges groan, wind rushes through the room, and the lamp handle rattles before becoming still.\n\nnon_diegetic_music: Low cello pulses at a slow tempo, ending on one sustained note."
-          ]
-        ]
-      ]
-    ]
-  ],
-  "minimax_h3_timeline_15s": [
-    [
-      "display_name",
-      "MiniMax H3 Timeline 15s"
-    ],
-    [
-      "instruction_template",
-      "Convert the following story or numbered shot list into a 15-second cinematic motion timeline using exactly integrated_multimodal_description, overall_soundscape, and non_diegetic_music. Input: \"{prompt}\""
-    ],
-    [
-      "examples",
-      [
-        [
-          [
-            "role",
-            "user"
-          ],
-          [
-            "content",
-            "Convert the following story or numbered shot list into a 15-second cinematic motion timeline using exactly integrated_multimodal_description, overall_soundscape, and non_diegetic_music. Input: \"Shot 1: On a rain-soaked rural platform, a conductor checks his watch as the last passenger runs toward the train. Shot 2: He holds the door and shouts that it is the final call. Shot 3: The passenger boards and the train pulls away into the night.\""
-          ]
-        ],
-        [
-          [
-            "role",
-            "assistant"
-          ],
-          [
-            "content",
-            "integrated_multimodal_description: [Shot 1] Live-action railway drama with fine 35mm grain and cold sodium-vapor lighting. In a wide view of a rain-soaked rural platform at night, a uniformed conductor checks his silver pocket watch beside the open last carriage while a passenger in a tan coat runs toward him through the downpour. The camera tracks the passenger with medium amplitude at moderate speed as shoes splash through puddles and the conductor scans the platform. [Shot 2] At 00:06.000, the camera cuts to a medium shot at the carriage door. The conductor braces one hand against the door, waves the passenger forward, and the conductor (S1) shouts, <d>[English] Final call! Keep moving!</d> The passenger reaches the step, grabs the brass rail, and climbs aboard as the conductor swings himself in behind. [Shot 3] At 00:11.000, the camera cuts to a low wide shot beside the rails. The door slams shut, warm carriage windows slide past, and the train accelerates away beneath the rain until its red tail lamps recede into the dark.\n\noverall_soundscape: Heavy rain hisses on the platform canopy over the passenger's splashing footsteps and ragged breathing. The conductor's watch clicks shut, the carriage door slams with a metallic bang, and steel wheels clatter into a rising rhythm as the engine pulls away.\n\nnon_diegetic_music: A tense orchestral pulse led by muted strings and low piano follows the runner, then opens into sustained brass and warmer strings as the passenger boards. The score softens into a slow, relieved cadence while the train disappears."
-          ]
-        ]
-      ]
-    ]
-  ],
-  "minimax_h3_t2va_timeline_15s": [
-    [
-      "display_name",
-      "MiniMax H3 T2VA Timeline 15s"
-    ],
-    [
-      "instruction_template",
-      "Convert the input into a 15-second text-guided motion timeline with zero images. Treat the input as the only source, preserve its entities and action, and never invent names or story events. Output only integrated_multimodal_description, overall_soundscape, and non_diegetic_music as plain text with one blank line between fields; no Markdown or questions. Always return the complete shot timeline and all three required fields; never return only image analysis, source description, soundscape, or music. Input: \"{prompt}\""
-    ],
-    [
-      "examples",
-      [
-        [
-          [
-            "role",
-            "user"
-          ],
-          [
-            "content",
-            "Convert the input into a 15-second text-guided motion timeline with zero images. Treat the input as the only source, preserve its entities and action, and never invent names or story events. Output only integrated_multimodal_description, overall_soundscape, and non_diegetic_music as plain text with one blank line between fields; no Markdown or questions. Always return the complete shot timeline and all three required fields; never return only image analysis, source description, soundscape, or music. Input: \"Tell this in 3 shots. Use a side view, then the courier's POV, then an overhead view. Track a bicycle courier crossing the market, braking beside a waiting customer, removing a parcel, and handing it over.\""
-          ]
-        ],
-        [
-          [
-            "role",
-            "assistant"
-          ],
-          [
-            "content",
-            "integrated_multimodal_description: [Shot 1] In side view, a Tracking Shot follows the bicycle courier as the courier pedals across the market, steers around a cart, and squeezes both brake levers. [Shot 2] At 00:05.000, the camera cuts to the courier's POV as the bicycle slows beside the waiting customer; the courier plants one foot, reaches back, and releases the parcel strap. [Shot 3] At 00:10.000, the camera cuts to an overhead view as the courier lifts the parcel from the rack, extends it toward the customer, and releases it into the customer's hands.\n\noverall_soundscape: Tires roll over stone beneath market chatter, the brakes squeak, the strap buckle clicks, and the parcel rustles during the handoff.\n\nnon_diegetic_music: Plucked strings keep a moderate pulse with light hand percussion and stop on the handoff."
-          ]
-        ]
-      ]
-    ]
-  ],
-  "minimax_h3_i2va_timeline_15s": [
-    [
-      "display_name",
-      "MiniMax H3 I2VA Timeline 15s"
-    ],
-    [
-      "instruction_template",
-      "Convert the input and exactly one first-frame image into a 15-second first-frame-guided motion timeline. Treat Picture 1 as the authoritative visual source and the input as the authoritative action source. Use Picture 1 to ground the requested action, but output motion rather than an image description. Never invent names, entities, or story events. Output only the three required plain-text fields; no Markdown or questions. Always return the complete shot timeline and all three required fields; never return only image analysis, source description, soundscape, or music. Input: \"{prompt}\""
-    ],
-    [
-      "examples",
-      [
-        [
-          [
-            "role",
-            "user"
-          ],
-          [
-            "content",
-            "Convert the input and exactly one first-frame image into a 15-second first-frame-guided motion timeline. Treat Picture 1 as the authoritative visual source and the input as the authoritative action source. Use Picture 1 to ground the requested action, but output motion rather than an image description. Never invent names, entities, or story events. Output only the three required plain-text fields; no Markdown or questions. Always return the complete shot timeline and all three required fields; never return only image analysis, source description, soundscape, or music. Input: \"Track the person shown in Picture 1 as they lift the kite already in their hands, walk outside, unfold it, and release it into the wind.\""
-          ]
-        ],
-        [
-          [
-            "role",
-            "assistant"
-          ],
-          [
-            "content",
-            "integrated_multimodal_description: [Shot 1] A Tracking Shot follows the person as they tighten their grip on the visible kite, lift it, turn toward the visible doorway, walk forward, and push the door open. [Shot 2] At 00:08.000, the camera cuts to the same person stepping outside, unfolding both kite spars, raising the kite into the wind, and releasing it as the line pulls taut and the kite climbs.\n\noverall_soundscape: Footsteps cross the floor, the latch clicks, the door swings open, and wind snaps the kite fabric before the line begins to hum.\n\nnon_diegetic_music: A light marimba pulse gains soft strings as the kite rises."
-          ]
-        ]
-      ]
-    ]
-  ],
-  "minimax_h3_fl2va_timeline_15s": [
-    [
-      "display_name",
-      "MiniMax H3 FL2VA Timeline 15s"
-    ],
-    [
-      "instruction_template",
-      "Convert the input and one required first-frame image, plus an optional second last-frame reference, into a 15-second first-to-last-frame motion timeline. Treat attached pictures as authoritative visual sources and the input as the authoritative action source. With one image, describe its visible source state concisely, then continue into the complete requested shot timeline while the downstream encoder supplies the unseen final frame. With two images, convert real pose, placement, framing, and camera differences into continuous subject motion and smooth camera adjustment that reaches the second picture. Describe only the continuous transition. Never invent names, entities, or story events. Output only the three required plain-text fields with one blank line between fields; no Markdown or questions. Always return the complete shot timeline and all three required fields; never return only image analysis, source description, soundscape, or music. Input: \"{prompt}\""
-    ],
-    [
-      "examples",
-      [
-        [
-          [
-            "role",
-            "user"
-          ],
-          [
-            "content",
-            "Convert the input and one required first-frame image, plus an optional second last-frame reference, into a 15-second first-to-last-frame motion timeline. Treat attached pictures as authoritative visual sources and the input as the authoritative action source. With one image, describe its visible source state concisely, then continue into the complete requested shot timeline while the downstream encoder supplies the unseen final frame. With two images, convert real pose, placement, framing, and camera differences into continuous subject motion and smooth camera adjustment that reaches the second picture. Describe only the continuous transition. Never invent names, entities, or story events. Output only the three required plain-text fields with one blank line between fields; no Markdown or questions. Always return the complete shot timeline and all three required fields; never return only image analysis, source description, soundscape, or music. Input: \"Tell this in 3 shots. The person visible in Picture 1 fills the visible pot with soil, plants the seedling, carries the pot to the window, opens the pane, and settles exactly into Picture 2.\""
-          ]
-        ],
-        [
-          [
-            "role",
-            "assistant"
-          ],
-          [
-            "content",
-            "integrated_multimodal_description: [Shot 1] The person visible in Picture 1 turns, sets the visible pot down, scoops soil into it, presses the seedling into the center, and firms the soil around its stem. [Shot 2] At 00:05.500, the camera cuts to the same person lifting the planted pot, carrying it toward the visible window, shifting it into one hand, and reaching for the latch with the other. [Shot 3] At 00:10.500, the camera cuts to the person releasing the latch, pushing the pane open, placing the pot on the sill, and adjusting the pot and their own pose until the requested motion settles exactly into Picture 2 at 15.00 seconds, with no invented final-frame details and no later action.\n\noverall_soundscape: Soil scrapes against clay, footsteps approach the window, the latch clicks, the pane slides open, and the pot settles onto the sill.\n\nnon_diegetic_music: Sparse acoustic-guitar notes add a soft cello line, resolve, and stop at the final landing."
-          ]
-        ]
-      ]
-    ]
-  ],
-  "minimax_h3_l2va_timeline_15s": [
-    [
-      "display_name",
-      "MiniMax H3 L2VA Timeline 15s"
-    ],
-    [
-      "instruction_template",
-      "Convert the input and exactly one last-frame image into a 15-second last-frame-guided motion timeline. Treat Picture 1 as the authoritative visual endpoint and the input as the authoritative action source. Use the real visible subject and final state to constrain the output, then describe only the preceding changes. Never invent names, entities, or story events. Output only the three required plain-text fields with one blank line between fields; no Markdown or questions. Always return the complete shot timeline and all three required fields; never return only image analysis, source description, soundscape, or music. Input: \"{prompt}\""
-    ],
-    [
-      "examples",
-      [
-        [
-          [
-            "role",
-            "user"
-          ],
-          [
-            "content",
-            "Convert the input and exactly one last-frame image into a 15-second last-frame-guided motion timeline. Treat Picture 1 as the authoritative visual endpoint and the input as the authoritative action source. Use the real visible subject and final state to constrain the output, then describe only the preceding changes. Never invent names, entities, or story events. Output only the three required plain-text fields with one blank line between fields; no Markdown or questions. Always return the complete shot timeline and all three required fields; never return only image analysis, source description, soundscape, or music. Input: \"Track the baggage cart visible in Picture 1 as the visible person pushes it across the station, slows it, parks it, applies the brake, and settles exactly into Picture 1.\""
-          ]
-        ],
-        [
-          [
-            "role",
-            "assistant"
-          ],
-          [
-            "content",
-            "integrated_multimodal_description: [Shot 1] A Tracking Shot follows the visible baggage cart as the person pushes it forward, its wheels turning steadily while they guide it across the platform and begin to reduce speed. [Shot 2] At 00:08.000, the camera cuts to the Tracking Shot continuing as the same person steers the cart into its final position, straightens its wheels, presses the brake lever down, releases the handle, and adjusts their pose until the exact visible subject, cart arrangement, framing, and lighting of Picture 1 are reached at 15.00 seconds, with no later action.\n\noverall_soundscape: Cart wheels rattle over tile beneath distant announcements and footsteps, then slow before the brake lever snaps down and the wheel noise stops.\n\nnon_diegetic_music: A muted-piano pulse with low strings gradually slows and ends at the final frame."
-          ]
-        ]
-      ]
-    ]
-  ],
   "minimax_music_3": [
     [
       "display_name",
@@ -2282,6 +2072,26 @@
           [
             "content",
             "integrated_multimodal_description: [Shot 1] In side view, a Tracking Shot follows the bicycle courier as the courier pedals across the market, steers around a cart, and squeezes both brake levers. [Shot 2] At 00:05.000, the camera cuts to the courier's POV as the bicycle slows beside the waiting customer; the courier plants one foot, reaches back, and releases the parcel strap. [Shot 3] At 00:10.000, the camera cuts to an overhead view as the courier lifts the parcel from the rack, extends it toward the customer, and releases it into the customer's hands.\n\noverall_soundscape: Tires roll over stone beneath market chatter, the brakes squeak, the strap buckle clicks, and the parcel rustles during the handoff.\n\nnon_diegetic_music: Plucked strings keep a moderate pulse with light hand percussion and stop on the handoff."
+          ]
+        ],
+        [
+          [
+            "role",
+            "user"
+          ],
+          [
+            "content",
+            "Convert the input into a 15-second text-guided motion timeline with zero images. Treat the input as the only source, preserve its entities and action, and never invent names or story events. Output only integrated_multimodal_description, overall_soundscape, and non_diegetic_music as plain text with one blank line between fields; no Markdown or questions. Always return the complete shot timeline and all three required fields; never return only image analysis, source description, soundscape, or music. Input: \"Shot 1: On a rain-soaked rural platform, a conductor checks his watch as the last passenger runs toward the train. Shot 2: He holds the door and shouts that it is the final call. Shot 3: The passenger boards and the train pulls away into the night.\""
+          ]
+        ],
+        [
+          [
+            "role",
+            "assistant"
+          ],
+          [
+            "content",
+            "integrated_multimodal_description: [Shot 1] Live-action railway drama with fine 35mm grain and cold sodium-vapor lighting. In a wide view of a rain-soaked rural platform at night, a uniformed conductor checks his silver pocket watch beside the open last carriage while a passenger in a tan coat runs toward him through the downpour. The camera tracks the passenger with medium amplitude at moderate speed as shoes splash through puddles and the conductor scans the platform. [Shot 2] At 00:06.000, the camera cuts to a medium shot at the carriage door. The conductor braces one hand against the door, waves the passenger forward, and the conductor (S1) shouts, <d>[English] Final call! Keep moving!</d> The passenger reaches the step, grabs the brass rail, and climbs aboard as the conductor swings himself in behind. [Shot 3] At 00:11.000, the camera cuts to a low wide shot beside the rails. The door slams shut, warm carriage windows slide past, and the train accelerates away beneath the rain until its red tail lamps recede into the dark.\n\noverall_soundscape: Heavy rain hisses on the platform canopy over the passenger's splashing footsteps and ragged breathing. The conductor's watch clicks shut, the carriage door slams with a metallic bang, and steel wheels clatter into a rising rhythm as the engine pulls away.\n\nnon_diegetic_music: A tense orchestral pulse led by muted strings and low piano follows the runner, then opens into sustained brass and warmer strings as the passenger boards. The score softens into a slow, relieved cadence while the train disappears."
           ]
         ]
       ]

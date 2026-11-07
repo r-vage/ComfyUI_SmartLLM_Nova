@@ -33,8 +33,8 @@ See the [splitter tour](Visual_Tour.md#split-song-json) for the resizable JSON e
 
 ## Splitter and native wiring
 
-Build these connections in your own ComfyUI audio graph. SmartLLM does not ship
-a YuE2 workflow JSON. Use a ComfyUI release that provides the native YuE2 nodes.
+Build these connections in your ComfyUI audio graph using a release that
+provides the native YuE2 nodes.
 
 Connect Smart LM Loader's text/result output to
 **Split YuE2 [SmartLLM Nova]** → `song_json`. Connect output 0, **style**, to `style`

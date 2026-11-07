@@ -6,7 +6,7 @@ import { seedControls } from './nova-panel-seed-controls.js';
 import { fetchModelEntry, fetchModelList, fetchDetectionModelList, fetchTaskList, fetchModelTasks, expireMetadataCache } from './smartllm-metadata.js';
 import { onSmartLLMRegistryChanged } from './smartllm-registry-events.js';
 
-const LABELS = { memory_cleanup: 'Cleanup', cleanup: 'Cleanup', keep_model_loaded: 'Keep loaded', multi_task_mode: 'Multi-task', use_few_shot_training: 'Training', nsfw_training: 'NSFW', enable_thinking: 'Thinking', use_advanced: 'Sampling', enable_preview_boxes: 'Preview boxes', get_mask_from_image: 'From image', combine_masks: 'Combine', invert: 'Invert', user_prompt: 'Prompt', user_input: 'Prompt / classes', model_name: 'Model', song_json: 'Song JSON', nms_iou_threshold: 'NMS IoU', detection_filter: 'Max area ratio', replace_underscore: 'Remove underscores', char_threshold: 'Character threshold' };
+const LABELS = { image_stride: 'Every Nth frame', image_handling: 'Image handling', max_image_side: 'Longest side', memory_cleanup: 'Cleanup', cleanup: 'Cleanup', keep_model_loaded: 'Keep loaded', multi_task_mode: 'Multi-task', use_few_shot_training: 'Training', nsfw_training: 'NSFW', enable_thinking: 'Thinking', use_advanced: 'Sampling', enable_preview_boxes: 'Preview boxes', get_mask_from_image: 'From image', combine_masks: 'Combine', invert: 'Invert', user_prompt: 'Prompt', user_input: 'Prompt / classes', model_name: 'Model', song_json: 'Song JSON', nms_iou_threshold: 'NMS IoU', detection_filter: 'Max area ratio', replace_underscore: 'Remove underscores', char_threshold: 'Character threshold' };
 const clean = values => (values ?? []).map(value => typeof value === 'string' ? value : value.display_name).filter(value => value && !value.startsWith('__SEP__') && !value.startsWith('─'));
 
 export class PanelForm {
@@ -51,7 +51,8 @@ export class PanelForm {
                 : 'Connected settings and query text override matching values below. Missing settings use these local values. Use Smart Detection Prompt Pipe to connect external query text.'));
         const entry = this.model === this.params[this.modelKey] ? this.entry : null;
         const backend = entry?.backend, family = entry?.family, wd = backend === 'wd14', yolo = backend === 'yolo', florence = family === 'Florence';
-        if (kind === 'loader') this.bar(content, ['memory_cleanup', 'keep_model_loaded', ...(!wd ? ['multi_task_mode', 'use_few_shot_training', 'nsfw_training', 'use_advanced', ...(backend === 'comfyui' && this.spec.fields.enable_thinking ? ['enable_thinking'] : [])] : [])], true);
+        const supportsThinkingControl = !florence && ['comfyui', 'ollama', 'transformers', 'vllm', 'vllm_native', 'sglang', 'llamacpp'].includes(backend);
+        if (kind === 'loader') this.bar(content, ['memory_cleanup', 'keep_model_loaded', ...(!wd ? ['multi_task_mode', 'use_few_shot_training', 'nsfw_training', 'use_advanced', ...(supportsThinkingControl && this.spec.fields.enable_thinking ? ['enable_thinking'] : [])] : [])], true);
         else if (kind === 'detection') this.bar(content, ['cleanup', 'keep_model_loaded', 'enable_preview_boxes'], true);
         if (this.modelKey) {
             this.section(content, 'model', 'Model', [], body => {
@@ -70,10 +71,13 @@ export class PanelForm {
             });
         }
         if (kind === 'loader') {
+            const legacyFrameLimit = !wd && this.params.image_handling === 'legacy' && entry?.has_vision
+                && (backend === 'comfyui' || !['Florence', 'Mistral', 'LLaVA', 'VLM'].includes(family));
+            this.section(content, 'images', 'Image handling', ['image_handling', 'max_image_side', 'image_stride', ...(legacyFrameLimit ? ['frame_count'] : [])]);
             if (wd) this.section(content, 'tagging', 'Tagging', ['threshold', 'char_threshold', 'replace_underscore']);
             else {
                 this.section(content, 'prompt', 'Prompt', ['user_prompt']);
-                this.section(content, 'generation', 'Generation', [backend === 'comfyui' ? 'max_tokens' : ['context_size', 'max_tokens'], ...(entry?.has_vision && (backend === 'comfyui' || !['Florence', 'Mistral', 'LLaVA', 'VLM'].includes(family)) ? ['frame_count'] : [])]);
+                this.section(content, 'generation', 'Generation', [backend === 'comfyui' ? 'max_tokens' : ['context_size', 'max_tokens']]);
                 if (this.params.use_advanced) this.sampling(content, florence, backend, entry?.has_vision === false);
             }
             this.section(content, 'hardware', 'Hardware', ['device', ...(backend === 'transformers' ? ['attention_mode', ...(entry?.has_vision === false ? [] : ['use_torch_compile'])] : [])]);
@@ -137,13 +141,16 @@ export class PanelForm {
         const toggle = button('', 'Mode', () => this.edit(state => { state.editor.barCollapsed = !collapsed; }));
         toggle.className = 'sln-panel-disclosure'; toggle.setAttribute('aria-expanded', String(!collapsed));
         toggle.append(element('span', '', `${collapsed ? '▸' : '▾'} Mode:`));
-        if (collapsed) toggle.append(element('span', 'sln-panel-summary', keys.filter(k => k !== 'nsfw_training' && this.params[k]).map(k => k === 'use_few_shot_training' ? `Training (${this.params.nsfw_training ? 'NSFW' : 'Standard'})` : LABELS[k]).join(' · ') || 'Off'));
+        if (collapsed) {
+            const summary = keys.filter(key => key === 'nsfw_training' || this.params[key])
+                .map(key => key === 'nsfw_training' ? (this.params[key] ? 'NSFW' : 'Standard') : LABELS[key]);
+            toggle.append(element('span', 'sln-panel-summary', summary.join(' · ') || 'Off'));
+        }
         bar.append(toggle);
         if (!collapsed) {
             for (const key of keys) {
                 const label = key === 'nsfw_training' ? (this.params[key] ? 'NSFW' : 'Standard') : LABELS[key];
                 const control = button(label, this.spec.fields[key].tip || label, () => this.edit(state => { state.config.parameters[key] = !state.config.parameters[key]; }));
-                if (key === 'nsfw_training') control.disabled = !this.params.use_few_shot_training;
                 control.dataset.field = key; control.setAttribute('aria-pressed', String(this.params[key])); bar.append(control);
             }
             if (seed) {
@@ -185,6 +192,18 @@ export class PanelForm {
             if (/^task_[234]$/.test(key) && this.textTasks?.length) options = ['None', ...this.textTasks];
             const change = next => { this.edit(state => { state.config.parameters[key] = next; }); if (key === this.modelKey) this.refresh(true); };
             options = key === this.modelKey ? this.modelOptions ?? groupedModelOptions(options, this.spec.kind) : clean(options);
+            if (key === 'image_handling') {
+                const together = value === 'frame_sequence', legacy = value === 'legacy';
+                const wrap = element('div', 'sln-panel-field sln-panel-check');
+                const tip = 'On: analyze the selected images together. Off: describe each image one by one. Independent of task and Direct Chat.';
+                const input = button(`Together: ${legacy ? 'Legacy' : together ? 'On' : 'Off'}`,
+                    legacy ? `Saved workflow behavior is retained. Click to enable Together. ${tip}` : tip,
+                    () => change(together ? 'individual_images' : 'frame_sequence'));
+                input.className = 'sln-panel-toggle'; input.dataset.field = key;
+                input.setAttribute('aria-label', 'Together');
+                input.setAttribute('aria-pressed', legacy ? 'mixed' : String(together));
+                wrap.append(element('span', '', label), input); parent.append(wrap); return;
+            }
             const input = this.menu.field(parent, label, value, options, change); input.dataset.field = key;
             if (key === this.modelKey) input.onclick = async () => {
                 if (this.menu.trigger === input) { this.menu.close(true); return; }
@@ -219,6 +238,7 @@ export class PanelForm {
     summary(key) {
         const p = this.params;
         return ({model: p[this.modelKey],
+            images: `Together: ${p.image_handling === 'legacy' ? 'Legacy' : p.image_handling === 'frame_sequence' ? 'On' : 'Off'} · ${p.max_image_side ? `${p.max_image_side}px` : 'Auto size'}${p.image_handling === 'frame_sequence' ? ` · Every ${p.image_stride}` : ''}`,
             prompt: p.user_prompt ? `${p.user_prompt.length} characters` : '',
             generation: this.entry?.backend === 'comfyui' ? `${p.max_tokens} tokens` : `${p.max_tokens} tokens · ${p.context_size} context`,
             hardware: p.device, sampling: p.do_sample ? `Temperature ${p.temperature}` : 'Greedy',

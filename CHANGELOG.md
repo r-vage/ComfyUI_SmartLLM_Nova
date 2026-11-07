@@ -1,3 +1,49 @@
+## 2026-11-07
+
+### Version: 1.1.12
+
+- **Feat**
+  - Add a separate Image handling section with an independent Together on/off button, longest-side sizing, every-Nth-frame selection and the applicable legacy frame limit. Keep it accessible with Model collapsed, with its own summary and pin state. Show unchanged legacy grouping until the button is clicked. Retain sequence endpoints, bypass legacy tail truncation for explicit grouping, preserve old configurations and existing socket indices.
+  - Add Scene Motion Analysis for image-to-video and Scene Description (T2V) for visible appearance, setting and motion. Focus motion instructions on transferable framing, existing poses, movement and expression, with no required appearance audit. Write concise generation paragraphs and observations in one response and record the selected description mode. Upgrade recognized task defaults while preserving custom prompts.
+  - Filter fully black frames before scene description, audit sent and omitted positions, and skip inference for all-black selections while retaining a black-screen paragraph. Accept lazy disk-frame sources without retaining an IMAGE passthrough in analysis loops.
+- **Fix**
+  - Let text tasks such as refinement and tag conversion use supplied images as optional context on vision models. Preserve task instructions alongside user hints for all VLM families, leave image sequence handling inactive for text-only requests, and retain custom system instructions when no image or user text is supplied.
+  - Clarify the Scene Motion Analysis scope in every response field, including the generation paragraph: transfer camera geometry, posture, motion and expression while leaving appearance and setting to the target reference. Keep full T2V descriptions separate and preserve usable responses with advisory warnings.
+  - Keep Standard/NSFW profile selection independent of Training, including the Mode button and collapsed summary. Turning Training off now omits examples while retaining the selected system prompts.
+  - Apply the existing NSFW profile guidance to active MiniMax H3 prompts. Remove retired H3 few-shot keys and preserve their richer railway example under T2VA; upgrade recognized defaults without replacing custom entries.
+  - Preserve usable scene descriptions with review warnings for unwanted appearance, verbosity or questionable pose wording. Accept a single complete JSON object inside a prose/code-fence wrapper, and scalar action, gaze/expression and uncertainty text as list entries without rewording or corrective inference. Treat T2V appearance audits as optional metadata and retain unusual formats for review without corrective inference. Avoid retrying content complaints; reserve the single correction attempt for invalid JSON, missing required fields or mismatched IDs so users can copy and edit results manually.
+  - Apply the Thinking switch to Ollama, Transformers, vLLM, SGLang and llama.cpp server requests as well as native ComfyUI encoders. Keep the choice off by default and use supported model-template controls for text, images and task chains. Hide it for local llama-cpp-python GGUF and non-chat detection models. Keep reasoning separate from final answers, including Transformers templates that prefill the opening thinking tag.
+- **Docs**
+  - Refresh the README and guides for image handling, text-plus-image tasks, motion/T2V descriptions, thinking controls and profile selection independent of Training. Clarify frame limits, lazy-frame inputs and optional Eclipse scene-analysis connections; describe music-node wiring without references to unshipped workflows.
+- **Changed files**
+  - .defaults/config/llm_few_shot_training_nsfw.json.example
+  - .defaults/config/system_prompts.json.example
+  - .defaults/config/system_prompts_nsfw.json.example
+  - README.md
+  - Readme/MiniMax_Music_3.md
+  - Readme/Nova_Panels.md
+  - Readme/Smart_LM_Loader_Guide.md
+  - Readme/User_Data.md
+  - Readme/Visual_Tour.md
+  - Readme/YuE2.md
+  - core/migration.py
+  - core/sml/backend_llamacpp_docker.py
+  - core/sml/backend_ollama_docker.py
+  - core/sml/backend_sglang_docker.py
+  - core/sml/backend_transformers.py
+  - core/sml/backend_vllm_docker.py
+  - core/sml/backend_vllm_native.py
+  - core/sml/config_templates.py
+  - core/sml/image_inputs.py
+  - core/sml/panel_configuration.py
+  - core/sml/scene_motion.py
+  - core/sml/tasks.py
+  - js/nova-panel-form.js
+  - js/nova-panel.css
+  - js/nova-panel-state.js
+  - py/RvLoader_SmartLMLoader.py
+  - pyproject.toml
+
 ## 2026-11-03
 
 ### Version: 1.1.11
