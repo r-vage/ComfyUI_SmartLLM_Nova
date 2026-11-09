@@ -41,6 +41,10 @@ image selection and one request per image. **Longest side** limits input size;
 `0` keeps automatic model limits. **Every Nth frame** samples Together selections
 while retaining both endpoints. **Max frames** appears only for applicable legacy
 configurations; explicit Together uses the supplied selection without that cap.
+Either `images` or the scene sampler's `frame_source` can supply every task that
+accepts images. H3 image tasks also use all selected samples as one scene with
+Together on, or one request per image with it off. Florence and WD14 process
+disk frames individually; their models cannot jointly describe multiple frames.
 
 These controls remain available in Direct Chat and with Model collapsed. Text-only
 requests ignore image handling. Vision models can also use images alongside text
@@ -52,6 +56,10 @@ In the mode bar, **Standard/NSFW** selects system prompts independently of
 **Training**; Training adds contextual examples without changing weights.
 **Thinking** defaults off and appears for supported backend paths. The model's
 template must support it, and reasoning shares **Max tokens** with the answer.
+**Scene JSON** defaults off. Enable it to send ordinary image-task descriptions
+to Scene Description Collector: code packages the response without asking the
+model for JSON or making another inference call. Together produces one scene
+description per window. Direct text output is unchanged when off.
 
 ## Native settings and subgraphs
 

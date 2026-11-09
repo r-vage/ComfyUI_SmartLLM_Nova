@@ -6,7 +6,7 @@ import { seedControls } from './nova-panel-seed-controls.js';
 import { fetchModelEntry, fetchModelList, fetchDetectionModelList, fetchTaskList, fetchModelTasks, expireMetadataCache } from './smartllm-metadata.js';
 import { onSmartLLMRegistryChanged } from './smartllm-registry-events.js';
 
-const LABELS = { image_stride: 'Every Nth frame', image_handling: 'Image handling', max_image_side: 'Longest side', memory_cleanup: 'Cleanup', cleanup: 'Cleanup', keep_model_loaded: 'Keep loaded', multi_task_mode: 'Multi-task', use_few_shot_training: 'Training', nsfw_training: 'NSFW', enable_thinking: 'Thinking', use_advanced: 'Sampling', enable_preview_boxes: 'Preview boxes', get_mask_from_image: 'From image', combine_masks: 'Combine', invert: 'Invert', user_prompt: 'Prompt', user_input: 'Prompt / classes', model_name: 'Model', song_json: 'Song JSON', nms_iou_threshold: 'NMS IoU', detection_filter: 'Max area ratio', replace_underscore: 'Remove underscores', char_threshold: 'Character threshold' };
+const LABELS = { image_stride: 'Every Nth frame', image_handling: 'Image handling', max_image_side: 'Longest side', memory_cleanup: 'Cleanup', cleanup: 'Cleanup', keep_model_loaded: 'Keep loaded', multi_task_mode: 'Multi-task', use_few_shot_training: 'Training', nsfw_training: 'NSFW', enable_thinking: 'Thinking', scene_json: 'Scene JSON', use_advanced: 'Sampling', enable_preview_boxes: 'Preview boxes', get_mask_from_image: 'From image', combine_masks: 'Combine', invert: 'Invert', user_prompt: 'Prompt', user_input: 'Prompt / classes', model_name: 'Model', song_json: 'Song JSON', nms_iou_threshold: 'NMS IoU', detection_filter: 'Max area ratio', replace_underscore: 'Remove underscores', char_threshold: 'Character threshold' };
 const clean = values => (values ?? []).map(value => typeof value === 'string' ? value : value.display_name).filter(value => value && !value.startsWith('__SEP__') && !value.startsWith('─'));
 
 export class PanelForm {
@@ -52,7 +52,7 @@ export class PanelForm {
         const entry = this.model === this.params[this.modelKey] ? this.entry : null;
         const backend = entry?.backend, family = entry?.family, wd = backend === 'wd14', yolo = backend === 'yolo', florence = family === 'Florence';
         const supportsThinkingControl = !florence && ['comfyui', 'ollama', 'transformers', 'vllm', 'vllm_native', 'sglang', 'llamacpp'].includes(backend);
-        if (kind === 'loader') this.bar(content, ['memory_cleanup', 'keep_model_loaded', ...(!wd ? ['multi_task_mode', 'use_few_shot_training', 'nsfw_training', 'use_advanced', ...(supportsThinkingControl && this.spec.fields.enable_thinking ? ['enable_thinking'] : [])] : [])], true);
+        if (kind === 'loader') this.bar(content, ['memory_cleanup', 'keep_model_loaded', ...(!wd ? ['multi_task_mode', 'use_few_shot_training', 'nsfw_training', 'use_advanced', ...(supportsThinkingControl && this.spec.fields.enable_thinking ? ['enable_thinking'] : []), ...(this.spec.fields.scene_json ? ['scene_json'] : [])] : [])], true);
         else if (kind === 'detection') this.bar(content, ['cleanup', 'keep_model_loaded', 'enable_preview_boxes'], true);
         if (this.modelKey) {
             this.section(content, 'model', 'Model', [], body => {

@@ -96,6 +96,27 @@ def scene_context_ids(prompt):
     return 0, 0
 
 
+def scene_caption_response(text, prompt, task_name, visual_text=None):
+    """Package task text without making the model generate a JSON contract.
+
+    scene_caption v1 is a portable text envelope, not a structured pose audit.
+    Consumers use performance_prompt and retain source_response for review.
+    """
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("The model returned no scene description")
+    scene_id, window_id = scene_context_ids(prompt)
+    paragraph = visual_text if isinstance(visual_text, str) and visual_text.strip() else text
+    if visual_text:
+        paragraph = re.sub(r"^\s*\[Shot\s+1\]\s*", "", paragraph, flags=re.IGNORECASE)
+    return json.dumps({
+        "format": "scene_caption", "version": 1,
+        "scene_id": scene_id, "window_id": window_id,
+        "description_mode": "full", "source_task": task_name,
+        "performance_prompt": " ".join(paragraph.split()),
+        "source_response": text,
+    }, ensure_ascii=False)
+
+
 def filter_scene_images(image, positions):
     """Exclude exact black samples while retaining their original selection positions."""
     if len(positions) != len(image):

@@ -123,18 +123,25 @@ def prepare_images(image, instance, max_side):
     return torch.stack([resize_frame(frame, instance, max_side) for frame in batch])
 
 
-def materialize_source(source, instance, max_side, every_nth=1):
+def validate_source(source):
+    """Validate the lazy input without decoding frames or loading a model."""
     if getattr(source, "version", None) != 1 or not callable(getattr(source, "iter_frames", None)):
         raise ValueError("Expected SMARTLLM_FRAME_SOURCE version 1 with iter_frames()")
-    if not 1 <= len(source) <= 256:
+    count = len(source)
+    if not 1 <= count <= 256:
         raise ValueError("Frame source must contain 1–256 frames; split longer sequences into windows")
+    return count
+
+
+def materialize_source(source, instance, max_side, every_nth=1):
+    declared_count = validate_source(source)
+    selected = set(sampled_positions(declared_count, every_nth))
     iterator = iter(source.iter_frames())
     frames = []
-    selected = set(sampled_positions(len(source), every_nth))
     count = 0
     try:
         for index, frame in enumerate(iterator):
-            if index >= len(source):
+            if index >= declared_count:
                 raise ValueError("Frame source yielded more frames than declared")
             count += 1
             if index in selected:
@@ -143,7 +150,7 @@ def materialize_source(source, instance, max_side, every_nth=1):
         close = getattr(iterator, "close", None)
         if close:
             close()
-    if count != len(source):
+    if count != declared_count:
         raise ValueError("Frame source yielded fewer frames than declared")
     if len({tuple(frame.shape) for frame in frames}) != 1:
         raise ValueError("Frame source images must have matching dimensions")

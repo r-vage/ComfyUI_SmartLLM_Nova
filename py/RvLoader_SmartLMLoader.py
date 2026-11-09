@@ -26,6 +26,8 @@ from ..core.sml.image_inputs import (
     prepare_images,
     sampled_positions,
     sequence_context,
+    sequence_request,
+    validate_source,
 )
 from ..core.sml.lifecycle import (
     register_execution_cleanup,
@@ -67,6 +69,7 @@ from ..core.sml.scene_motion import (
     attach_input_evidence,
     black_scene_observation,
     filter_scene_images,
+    scene_caption_response,
     scene_context_ids,
     scene_contract_issue,
     scene_request_prompt,
@@ -78,6 +81,7 @@ from ..core.sml.tasks import (
     TASK_BY_NAME,
     canonicalize_task_name,
     get_h3_mode,
+    get_h3_sequence_system_prompt,
     get_h3_story_system_prompt,
     get_system_prompt,
     get_task_names,
@@ -320,7 +324,7 @@ def _build_vlm_prompt(task_name, user_prompt, input_image, *, family="Qwen"):
     h3_mode = get_h3_mode(task_name)
     image_count = _image_frame_count(input_image)
     if h3_mode is not None:
-        resolve_h3_input_mode(task_name, image_count)
+        resolve_h3_input_mode(task_name, image_count, frame_sequence=sequence_request.get())
     has_image = image_count > 0
     is_flexible = task_name in _FLEXIBLE_TASKS or h3_mode is not None
     is_text_only = not has_image and (
@@ -389,7 +393,7 @@ def _h3_output_contract_issue(task_name, output, image_count, *, story_mode=Fals
     if not bodies[0].startswith("[Shot 1]"):
         return "integrated_multimodal_description must begin with [Shot 1]"
 
-    mode.resolve_input_mode(image_count)
+    resolve_h3_input_mode(task_name, image_count, frame_sequence=sequence_request.get())
     first_line = text.splitlines()[0].strip()
     if not first_line.lower().startswith("integrated_multimodal_description:"):
         return "H3 output must begin with integrated_multimodal_description"
@@ -408,7 +412,7 @@ def _h3_output_contract_issue(task_name, output, image_count, *, story_mode=Fals
 
 
 def _h3_recovery_system_prompt(task_name, image_count):
-    get_h3_mode(task_name).resolve_input_mode(image_count)
+    resolve_h3_input_mode(task_name, image_count, frame_sequence=sequence_request.get())
     opening = "Begin immediately with integrated_multimodal_description: [Shot 1]"
 
     base = get_system_prompt(task_name).rstrip()
@@ -444,7 +448,7 @@ def _normalize_h3_output(task_name, output, image_count):
     text = str(output or "").strip()
     if mode is None:
         return text
-    mode.resolve_input_mode(image_count)
+    resolve_h3_input_mode(task_name, image_count, frame_sequence=sequence_request.get())
     first_field = _H3_FIELD_PATTERN.search(text)
     if (
         first_field is not None
@@ -464,8 +468,7 @@ def _h3_fallback_output(
     # Build a valid, conservative prompt when the model omits required fields
     # twice. Prefer any usable generated field, but always retain the requested
     # action instead of failing the whole ComfyUI execution.
-    mode = get_h3_mode(task_name)
-    mode.resolve_input_mode(image_count)
+    resolve_h3_input_mode(task_name, image_count, frame_sequence=sequence_request.get())
     candidates = [_h3_field_bodies(output) for output in model_outputs]
 
     def _first_body(label):
@@ -481,7 +484,9 @@ def _h3_fallback_output(
     else:
         action = re.sub(r"\s+", " ", str(user_prompt or "")).strip()
         if not action:
-            if story_mode and image_count == 0:
+            if sequence_request.get() and image_count:
+                action = "The scene follows the visible poses and changes in the supplied ordered frames."
+            elif story_mode and image_count == 0:
                 action = (
                     "An original traveler enters a rain-swept station, discovers a "
                     "forgotten letter beneath a bench, and looks toward the departing "
@@ -1021,11 +1026,14 @@ def _generate_with_h3_recovery(**generation_kwargs):
             user_prompt=generation_kwargs.get("user_prompt"),
         )
 
-    story_token = None
-    if story_mode:
-        story_token = push_system_prompt_override(get_h3_story_system_prompt(task_name))
+    image_count = _image_frame_count(generation_kwargs.get("input_image"))
+    prompt_token = None
+    if sequence_request.get() and image_count:
+        story_mode = False
+        prompt_token = push_system_prompt_override(get_h3_sequence_system_prompt(task_name, image_count))
+    elif story_mode:
+        prompt_token = push_system_prompt_override(get_h3_story_system_prompt(task_name))
     try:
-        image_count = _image_frame_count(generation_kwargs.get("input_image"))
         initial_result, data = _generate_for_family(**generation_kwargs)
         initial_result = _normalize_h3_output(task_name, initial_result, image_count)
         issue = _h3_output_contract_issue(
@@ -1075,8 +1083,8 @@ def _generate_with_h3_recovery(**generation_kwargs):
             data = {"h3_format_fallback": True}
         return result, data
     finally:
-        if story_token is not None:
-            reset_system_prompt_override(story_token)
+        if prompt_token is not None:
+            reset_system_prompt_override(prompt_token)
 
 
 # ============================================================================
@@ -1230,6 +1238,7 @@ def _execute_wd14(
     node_id=None,
     initial_title=None,
     max_image_side=0,
+    frame_source=None,
 ):
     # WD14 tagger — completely separate from LLM pipeline.
     import comfy.utils  # type: ignore
@@ -1238,8 +1247,8 @@ def _execute_wd14(
 
     from ..core.sml.backend_wd14 import load_wd14_model, tag_image, unload_wd14_model
 
-    if images is None:
-        raise ValueError("WD14 Tagger requires an image input")
+    if images is None and frame_source is None:
+        raise ValueError("WD14 Tagger requires images or frame_source")
 
     # Model name = last part of repo_id (e.g. "SmilingWolf/wd-swinv2-tagger-v3" → "wd-swinv2-tagger-v3")
     wd14_model_name = repo_id.split("/")[-1] if "/" in repo_id else repo_id
@@ -1261,6 +1270,13 @@ def _execute_wd14(
         register_execution_cleanup(unload_wd14_model)
 
     session, tags_data = load_wd14_model(wd14_model_name, device=device)
+
+    if max_image_side:
+        required_side = session.get_inputs()[0].shape[1]
+        if isinstance(required_side, int) and max_image_side < required_side:
+            raise ValueError(f"WD14 requires {required_side}px input; increase Longest side or use 0")
+    if frame_source is not None:
+        images = materialize_source(frame_source, None, max_image_side)
 
     # Flatten/normalize images list for processing
     flat_list = []
@@ -1319,28 +1335,25 @@ def _execute_wd14(
             if hasattr(image, "shape") and image.ndim == 4 and image.shape[0] == 1:
                 image = image.squeeze(0)
             img_np = (image.cpu().numpy() * 255).astype(np.uint8)
-            pil_img = Image.fromarray(img_np)
-            if max_image_side:
-                required_side = session.get_inputs()[0].shape[1]
-                if isinstance(required_side, int) and max_image_side < required_side:
-                    raise ValueError(f"WD14 requires {required_side}px input; increase Longest side or use 0")
-                pil_img.thumbnail((max_image_side, max_image_side), Image.Resampling.LANCZOS)
-            tags = tag_image(
-                pil_img,
-                session,
-                tags_data,
-                threshold=threshold,
-                char_threshold=char_threshold,
-                replace_underscore=replace_underscore,
-                trailing_comma=False,
-            )
+            with Image.fromarray(img_np) as pil_img:
+                if max_image_side:
+                    pil_img.thumbnail((max_image_side, max_image_side), Image.Resampling.LANCZOS)
+                tags = tag_image(
+                    pil_img,
+                    session,
+                    tags_data,
+                    threshold=threshold,
+                    char_threshold=char_threshold,
+                    replace_underscore=replace_underscore,
+                    trailing_comma=False,
+                )
             results.append(tags)
             pbar.update(1)
     finally:
         if initial_title and node_id is not None:
             restore_title()
 
-    return io.NodeOutput(flat_list, results)
+    return io.NodeOutput(flat_list if frame_source is None else [], results)
 
 
 # ============================================================================
@@ -1721,6 +1734,15 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                     "Native Qwen description tasks use a short thinking budget. Local llama-cpp-python GGUF has no supported switch. "
                     "Stored in this node without changing global defaults.",
                 ),
+                io.Boolean.Input(
+                    "scene_json", default=False, optional=True,
+                    tooltip="Package image-task text as scene JSON in code for Scene Description Collector. "
+                    "Off preserves normal output. No additional inference or model JSON instruction. "
+                    "H3 uses its visual description and retains the full response for review. "
+                    "Use Together for one scene description per frame window and include source appearance on export. "
+                    "Existing Scene Motion Analysis / Scene Description tasks keep their structured output. "
+                    "Text-only requests are unchanged. Stored only in this node.",
+                ),
                 io.Combo.Input("image_handling", options=["individual_images", "frame_sequence", "legacy"],
                                default="individual_images", optional=True,
                                tooltip="One by one: one description per image. Together: all supplied frames in one request, in order. Independent of task and Direct Chat. Legacy preserves older saved workflows."),
@@ -1803,6 +1825,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
         images=None,
         system_prompt=None,
         enable_thinking=False,
+        scene_json=False,
         image_handling="legacy",
         max_image_side=0,
         image_stride=1,
@@ -1901,6 +1924,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
         use_advanced = _unwrap_scalar(use_advanced, True)
         use_few_shot_training = _unwrap_scalar(use_few_shot_training, True)
         enable_thinking = _unwrap_scalar(enable_thinking, False)
+        scene_json = _unwrap_scalar(scene_json, False)
         min_p = _unwrap_scalar(min_p, 0.0)
         mirostat = _unwrap_scalar(mirostat, "0 (off)")
         mirostat_eta = _unwrap_scalar(mirostat_eta, 0.1)
@@ -1915,8 +1939,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
         frame_source = _unwrap_scalar(frame_source, None)
         if frame_source is not None and images is not None:
             raise ValueError("Connect images OR frame_source, not both")
-        if frame_source is not None and get_h3_mode(task) is not None:
-            raise ValueError("H3 reference tasks require the images socket; use Scene Motion Analysis for disk frames")
+        source_count = validate_source(frame_source) if frame_source is not None else 0
 
         # Normalize user_prompt to a list of strings
         if user_prompt is None:
@@ -1932,15 +1955,20 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
         h3_mode = get_h3_mode(task)
         h3_image_count = 0
         h3_resolved_mode = None
-        if h3_mode is not None:
+        if h3_mode is not None and image_handling == "legacy" and frame_source is None:
             grouped, h3_image_count, h3_resolved_mode = _prepare_h3_reference_group(
                 task, images
             )
             flat_images = [grouped] if grouped is not None else []
-            if image_handling == "individual_images" and h3_image_count > 1:
-                raise ValueError("H3 first/last references need Image handling = Together")
         else:
             flat_images = group_images(images, image_handling, task)
+            if h3_mode is not None:
+                h3_image_count = source_count if frame_source is not None else _image_frame_count(images)
+                if image_handling == "individual_images" and h3_image_count:
+                    h3_image_count = 1
+                h3_resolved_mode = resolve_h3_input_mode(
+                    task, h3_image_count, frame_sequence=image_handling == "frame_sequence",
+                )
 
         # ── Use Advanced gate ──────────────────────────────────
         # When OFF, override sampling params with conservative defaults (matches
@@ -1995,6 +2023,8 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                 f"{task} {h3_resolved_mode} mode requires a vision-language model "
                 "to inspect its reference image(s)."
             )
+        if frame_source is not None and not model_has_vision:
+            raise ValueError("Frame analysis requires a vision-language model")
 
         log.msg(
             _LOG_PREFIX, f"Model: {model} | backend={backend} | family={model_family}"
@@ -2002,8 +2032,8 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
 
         # ── 2. WD14 fast-path ───────────────────────────────────
         if backend == "wd14":
-            if frame_source is not None or image_handling == "frame_sequence":
-                raise ValueError("WD14 does not support ordered frame sequences; use a vision-language model")
+            if image_handling == "frame_sequence" and (source_count or _image_frame_count(images)) > 1:
+                raise ValueError("WD14 tags images individually; turn Together off to process each frame")
             return _execute_wd14(
                 repo_id=repo_id,
                 revision=entry.get("revision"),
@@ -2017,6 +2047,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                 node_id=node_id,
                 initial_title=initial_title,
                 max_image_side=max_image_side,
+                frame_source=frame_source,
             )
 
         # ── 3. Resolve model path ──────────────────────────────
@@ -2219,15 +2250,18 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
             )
 
         if frame_source is not None:
-            if not model_has_vision:
-                raise ValueError("Frame analysis requires a vision-language model")
-            flat_images = group_images(materialize_source(frame_source, instance, max_image_side, image_stride), image_handling, task)
+            source_images = materialize_source(frame_source, instance, max_image_side, image_stride)
+            if h3_mode is not None and image_handling == "legacy":
+                grouped, h3_image_count, h3_resolved_mode = _prepare_h3_reference_group(task, source_images)
+                flat_images = [grouped]
+            else:
+                flat_images = group_images(source_images, image_handling, task)
         if (image_handling == "frame_sequence" and any(len(item) > 1 for item in flat_images)
                 and (not model_has_vision or model_family == "Florence")):
             raise ValueError("This model cannot describe multiple frames together; choose a supported VLM")
 
-        # Align inputs for list execution. The H3 group occupies one list item,
-        # so one story produces one generation with both endpoints attached.
+        # Together and Legacy H3 groups occupy one list item, retaining all
+        # references in one generation; individual mode maps one run per image.
         prompts_aligned, images_aligned = _align_execution_inputs(
             user_prompts, flat_images
         )
@@ -2273,13 +2307,14 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                         notify=True,
                     )
 
-                if task in SCENE_TASK_MODES and input_image is not None:
+                if (task in SCENE_TASK_MODES or scene_json) and input_image is not None:
                     if frame_source is not None:
                         source_positions = sampled_positions(len(frame_source), image_stride)
                         scene_positions = (source_positions if image_handling == "frame_sequence"
                                            else (source_positions[min(run_idx, len(source_positions) - 1)],))
                     else:
                         scene_positions = selected if image_handling == "frame_sequence" else (min(run_idx, len(flat_images) - 1),)
+                if task in SCENE_TASK_MODES and input_image is not None:
                     input_image, scene_positions, omitted_positions = filter_scene_images(input_image, scene_positions)
                     single_prompt = scene_request_prompt(single_prompt, input_image, scene_positions)
                 skip_scene_inference = task in SCENE_TASK_MODES and input_image is not None and not len(input_image)
@@ -2327,6 +2362,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                         reset_system_prompt_override(_override_token)
 
                 # ── Multi-task chaining ─────────────────────────────
+                final_task = task
                 if multi_task_mode and model_family != "Florence" and not skip_scene_inference:
                     tasks_to_run = [task]
                     for t in [task_2, task_3, task_4]:
@@ -2361,8 +2397,19 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                             repeat_last_n=repeat_last_n,
                             stop_sequences=stop_list,
                         )
+                        final_task = tasks_to_run[-1]
 
-                if task in SCENE_TASK_MODES and (not multi_task_mode or skip_scene_inference) and input_image is not None:
+                caption_json = scene_json and final_task not in SCENE_TASK_MODES and input_image is not None
+                if caption_json:
+                    visual_text = (_h3_field_bodies(run_res).get("integrated_multimodal_description")
+                                   if get_h3_mode(final_task) is not None else None)
+                    run_res = scene_caption_response(run_res, single_prompt, final_task, visual_text)
+                if input_image is not None and (
+                    task in SCENE_TASK_MODES and (not multi_task_mode or skip_scene_inference)
+                    # Legacy video transports may apply their own tail-frame cap.
+                    # Only publish measured positions when the sent set is known.
+                    or caption_json and (image_handling != "legacy" or len(input_image) == 1)
+                ):
                     run_res = attach_input_evidence(run_res, positions=scene_positions, image=input_image,
                         handling=image_handling, longest_side=max_image_side, every_nth=image_stride,
                         omitted_positions=omitted_positions)

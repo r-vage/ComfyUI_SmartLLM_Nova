@@ -94,7 +94,7 @@ Some generative tasks intentionally use `user_prompt` as their source material:
   because the downstream H3 encoder can enforce its separately connected last
   frame; attaching both frames also lets the VLM reason about endpoint differences.
   The compact, duration-neutral **MiniMax H3 Scene** task infers T2VA/I2VA/FL2VA
-  from zero/one/two images. Leave `user_prompt` empty to have SmartLLM create an
+  from zero/one/two Legacy references. With Together off or Legacy, leave `user_prompt` empty to have SmartLLM create an
   original one-shot story, grounding it in one image or connecting two endpoint
   images when supplied. This automatic story mode adds suitable sound and music,
   and uses dialogue only when the scene supports it. You can instead provide a
@@ -143,6 +143,11 @@ actual first/last keyframes to that encoder separately, in the order its workflo
 requires; the FL2VA prompt-writing task does not require its optional last-frame
 reference when the encoder already receives that frame.
 Enable **Together** in Image handling when supplying both endpoint images to the loader.
+Together also accepts longer sampled scenes for image-capable H3 tasks: all
+selected frames guide one H3 description, with the first and last samples as
+the observed endpoints. With images and Together on, an empty prompt describes
+the observed scene; automatic story invention is disabled. T2VA Timeline remains
+text-only, and existing Legacy reference counts are preserved.
 
 ### Use the mode bar and sections
 
@@ -189,7 +194,11 @@ Smart LM describes the supplied frames. For measured scene boundaries, bounded
 disk sampling and H3 part-prompt export, connect the optional
 [Eclipse Nova scene-analysis nodes](https://github.com/r-vage/ComfyUI_Eclipse_Nova/blob/main/Readme/Scene_Analysis.md).
 Connect Scene Frame Sampler's `frame_source` to the loader's matching input to
-avoid retaining full image batches in the loop.
+avoid retaining full image batches in the loop. This source works with every
+loader task that accepts images, including image-capable H3 tasks. Together on
+uses the selected sequence in one request; Off processes each frame separately.
+Florence and WD14 require individual processing for multiple frames. Text tasks
+keep their text instructions with optional image context.
 See [scene motion and image handling](Readme/Smart_LM_Loader_Guide.md#image-sequences-and-scene-motion)
 for task contracts, frame limits and review guidance.
 

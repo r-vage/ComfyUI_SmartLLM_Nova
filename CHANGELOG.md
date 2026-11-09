@@ -1,3 +1,25 @@
+## 2026-11-09
+
+### Version: 1.1.13
+
+- **Feat**
+  - Add an opt-in Scene JSON mode for ordinary image-task descriptions. Build the JSON in code without changing model instructions or adding inference; retain the original text and measured request evidence, and use H3's visual field as the scene paragraph. Keep direct text output and existing structured scene tasks compatible.
+- **Fix**
+  - Accept lazy disk frames for every loader task that supports images, including MiniMax H3 and individual WD14 tagging. Preserve frame order, resizing, source cleanup and empty IMAGE output for disk inputs.
+  - Apply Together consistently to H3: describe all selected frames as one observed scene, or process each image separately when off. Keep intermediate samples, the selected H3 output format and explicit user instructions; avoid automatic story invention for scene sequences. Retain Legacy reference counts and text-only T2VA behavior.
+- **Docs**
+  - Clarify interchangeable image sources, H3 scene sequences, optional image context for text tasks and individual processing with Florence/WD14.
+- **Changed files**
+  - README.md
+  - Readme/Nova_Panels.md
+  - Readme/Smart_LM_Loader_Guide.md
+  - core/sml/image_inputs.py
+  - core/sml/scene_motion.py
+  - core/sml/tasks.py
+  - js/nova-panel-form.js
+  - py/RvLoader_SmartLMLoader.py
+  - pyproject.toml
+
 ## 2026-11-07
 
 ### Version: 1.1.12

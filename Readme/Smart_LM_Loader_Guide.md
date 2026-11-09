@@ -544,6 +544,13 @@ ONNX Runtime for SmilingWolf WD14 tagger models.
 | **MiniMax H3 FL2VA Timeline** | First; optional last | Timeline starting from the first reference and landing on the encoder-supplied last frame; an optional second reference lets the VLM inspect both endpoints |
 | **MiniMax H3 L2VA Timeline** | Last | Timeline converging on one last-frame image |
 
+These reference counts describe Legacy H3 inputs. With **Together on**, the
+image-capable H3 tasks also accept an ordered scene sequence from `images` or
+`frame_source`. Every selected sample contributes to one description in the H3
+three-field format; intermediate samples are retained and the last supplied
+sample is the visual endpoint. With **Together off**, each supplied image gets
+its own request. **T2VA Timeline** remains text-only.
+
 ### Vision Tasks (all VLM families)
 
 | Task | Description |
@@ -721,8 +728,8 @@ Docker backends are configured in `docker_config.json`:
 
 1. Select a text-capable model for text-to-video, or a vision-language model when images are required
 2. Choose the Wan/LTX task, the compact **MiniMax H3 Scene**, or the explicit H3 T2VA/I2VA/FL2VA/L2VA timeline task matching your inputs. H3 task labels are duration-neutral; timeline prompts use the model's 15-second maximum as their planning range unless you request a shorter duration
-3. For H3, connect no image for T2VA, one first-frame image for I2VA, one first-frame image or an ordered first/last pair for explicit FL2VA, or one last-frame image for L2VA. The Scene task still infers T2VA/I2VA/FL2VA from zero/one/two images. Other count mismatches fail before generation
-4. For **MiniMax H3 Scene**, either enter a short description of what should happen or leave `user_prompt` empty for an automatically generated story. With an empty prompt, zero images create an original story, one image grounds the story in that frame, and two images create a natural progression between the endpoints. SmartLLM adds scene-appropriate music and sound, with dialogue only when plausible. For a supplied prompt, describe the action, dialogue, sound, pacing, and any camera behavior that should occur. Natural language can set a feasible one-to-four shot count for timeline tasks, such as “tell this in 3 shots.” Requested views are honored in order, so “side view, then POV, then overhead” maps those views to Shots 1–3. “Track Mara” or “track the blue cart” becomes a Tracking Shot naming that target
+3. For H3 reference-based generation, connect no image for T2VA, one first-frame image for I2VA, one first-frame image or an ordered first/last pair for explicit FL2VA, or one last-frame image for L2VA. Legacy retains those count checks. To describe a sampled scene, connect either `images` or `frame_source` and enable **Together**: the image-capable H3 tasks inspect every selected frame in one request, including intermediate frames. Off processes images individually
+4. For **MiniMax H3 Scene**, enter a short description of what should happen. With Together on and images supplied, an empty prompt describes the observed scene, without automatically inventing a story, cuts, duration, sound or music; explicit user instructions remain active. Without images, or with Together off/Legacy, an empty prompt retains automatic storytelling: zero images create an original story, one image grounds it in that frame, and a Legacy pair supplies its endpoints. That story mode adds scene-appropriate music and sound, with dialogue only when plausible. For a supplied prompt, describe the action, dialogue, sound, pacing, and any camera behavior that should occur. Natural language can set a feasible one-to-four shot count for timeline tasks, such as “tell this in 3 shots.” Requested views are honored in order, so “side view, then POV, then overhead” maps those views to Shots 1–3. “Track Mara” or “track the blue cart” becomes a Tracking Shot naming that target
 5. Queue Prompt
 6. Send the generated text to the corresponding video workflow
 
@@ -735,7 +742,7 @@ With both pictures the VLM can trace their observable
 differences; with only Picture 1 it briefly describes the visible source state,
 continues into the complete `user_prompt` action timeline, avoids inventing unseen
 final-frame details, and still ends exactly on encoder-supplied Picture 2.
-Without an explicit shot count, timeline tasks create two to four purposeful,
+In reference-based generation without an explicit shot count, timeline tasks create two to four purposeful,
 duration-safe shots within the maximum 15-second planning range and do not invent
 extra camera angles.
 
@@ -863,11 +870,38 @@ Enable in `config.json`:
 
 ## Image sequences and scene motion
 
+**Scene JSON** in the Mode bar defaults off and is saved per node. Enable it when
+using ordinary image tasks, including Detailed/Ultra Detailed Description or H3,
+with Eclipse's **Scene Description Collector**. The task keeps its normal model
+instructions; Python serializes the result, so quotes, line breaks and braces
+cannot break the JSON. There is no extra inference call. Off preserves the normal
+text output, including existing workflows without this field. Text-only requests
+and WD14 tagging remain unchanged. Existing Scene Motion Analysis and Scene
+Description (T2V) tasks keep their structured observations and validation.
+
+Use **Together: On** for one description of each sampled scene window. Connect the
+sampler's context through the Prompt Pipe's **user_prompt** to retain the measured
+scene/window IDs. The portable `scene_caption` version-1 envelope contains
+`scene_id`, `window_id`, `description_mode: "full"`, `source_task`,
+`performance_prompt` and `source_response`. The complete response is kept for
+review; the scene paragraph joins its whitespace. H3 uses its
+`integrated_multimodal_description` without the opening `[Shot 1]` label, retaining
+the full H3 response separately. It does not invent pose or action audit fields.
+For task chains, the final task's response is packaged.
+
+Select **include source appearance** in Scene Analysis to H3 for these captions:
+the selected task's wording is retained, with no automatic appearance removal.
+Ordinary task output can still contain mistaken or invented content; JSON packaging
+does not improve visual understanding. Request evidence records the actual supplied
+positions/count for Together and individual images. Legacy multi-image transports
+can apply backend-specific caps, so captions in that compatibility mode omit
+unverified input evidence. Use Together for auditable scene windows.
+
 Text tasks such as **Refine & Expand Prompt**, **Tags to Natural Language** and **Natural Language to Tags** work with text alone. Without images, image grouping, sizing and frame stride do not process anything or require an image. With a vision-capable model and images, those same tasks receive both the images and your text, so the Prompt can give focus instructions or context. The selected task instructions remain active. Together sends the selected images in one request; Off sends one image per request with the corresponding text. Later multi-task stages still process the preceding text result. Models without vision weights cannot use image context, and model-specific limits still apply to supplied images.
 
 The **Image handling** section below Model contains **Together**, **Longest side** and **Every Nth frame**. It opens and collapses independently of Model, shows the current image settings in its header, and can be pinned open while other sections are used. The legacy **Max frames** control also appears here when applicable. Values are saved per node and remain available for Direct Chat and custom system instructions.
 
-- **Image handling** uses a **Together** toggle: **On** sends the ordered selection in one request; **Off** runs one request per supplied image. Older configurations show **Legacy** until clicked, preserving their saved behavior; the first click enables Together. Together bypasses the legacy last-N frame cap; upstream sampling/windowing bounds the request. Unsupported multi-image processor paths fail explicitly. Existing configurations without the switch retain their historical behavior. New H3 first/last reference configurations with two images need Together.
+- **Image handling** uses a **Together** toggle: **On** sends the ordered selection in one request; **Off** runs one request per supplied image, including H3 image tasks. Older configurations show **Legacy** until clicked, preserving their saved behavior; the first click enables Together. Together bypasses the legacy last-N frame cap; upstream sampling/windowing bounds the request. Unsupported multi-image processor paths fail explicitly. Existing configurations without the switch retain their historical behavior. H3 scene sequences and first/last pairs use Together.
 - **Longest side = 0** keeps automatic model sizing. A positive value reduces input dimensions while respecting model limits and avoiding source upscaling. Dynamic patch alignment may round down. Known fixed/minimum processor sizes are checked; remote servers still own their final preprocessing. The ordinary IMAGE output retains the original input pixels.
 - **Every Nth frame** applies to Together, defaults to 1, and always includes the first and last supplied image. It samples the supplied batch, which may already have been sampled upstream. Two at 30 source fps gives 15 samples/second only when the input actually contains every original frame. Use 1 to retain brief gestures/expressions or when sampling upstream.
 
@@ -885,7 +919,9 @@ Only structural failures—invalid JSON, missing required fields, non-text list 
 
 The structural correction retains the original images and provides the validation issue. It does not insert the rejected answer into the prompt. A usable description takes one inference, including when it needs manual content review.
 
-For file-backed loops, the optional **frame_source** socket accepts the public `SMARTLLM_FRAME_SOURCE` version-1 protocol: an object with `version == 1`, `len(source)` in 1–256 and `iter_frames()` yielding ordered HWC RGB uint8 arrays. The producer owns the files and keeps them alive. Smart LM loads/resizes only the active request, closes the iterator on failure and returns an **empty IMAGE list** for this input to avoid retaining pixels in graph caches. Do not connect both images and frame_source. Regular IMAGE passthrough is unchanged. Existing images/seed/pipe socket indices are preserved.
+Every loader task that accepts images can use **frame_source** instead. The source changes how pixels are loaded; the selected task keeps its instructions and output format. Together describes the selected scene in one request on a supported VLM; Off processes frames individually. Text tasks retain their text instructions and can use a single supplied image as context. Florence and WD14 accept disk frames individually; turn Together off for multiple frames with those models. A text-only model cannot inspect either image source.
+
+For file-backed loops, the optional **frame_source** socket accepts the public `SMARTLLM_FRAME_SOURCE` version-1 protocol: an object with `version == 1`, `len(source)` in 1–256 and `iter_frames()` yielding ordered HWC RGB uint8 arrays. The producer owns the files and keeps them alive. Smart LM validates the source before loading a model, loads/resizes only the active request, closes the iterator on success or failure and returns an **empty IMAGE list** for this input to avoid retaining pixels in graph caches. Do not connect both images and frame_source. Regular IMAGE passthrough is unchanged. Existing images/seed/pipe socket indices are preserved.
 
 Successful scene-task JSON receives measured `input_evidence`: selected positions, count, dimensions, grouping, longest-side setting and stride. This metadata is supplied by the loader, not inferred by the model. Eclipse's scene collector maps it to source frame IDs and presentation timestamps.
 

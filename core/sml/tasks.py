@@ -52,7 +52,11 @@ class H3Mode:
     def needs_image(self) -> bool:
         return 0 not in self.allowed_image_counts
 
-    def resolve_input_mode(self, image_count: int) -> str:
+    def resolve_input_mode(self, image_count: int, *, frame_sequence: bool = False) -> str:
+        # Together supplies scene observations, which can outnumber the target
+        # video's reference images. T2VA remains a text-only input contract.
+        if frame_sequence and image_count > 0 and self.input_mode != "T2VA":
+            image_count = min(image_count, max(self.allowed_image_counts))
         if image_count not in self.allowed_image_counts:
             expected = (
                 str(self.allowed_image_counts[0])
@@ -394,10 +398,38 @@ def get_h3_mode(task_name: str) -> H3Mode | None:
     return H3_MODE_METADATA.get(canonicalize_task_name(task_name))
 
 
-def resolve_h3_input_mode(task_name: str, image_count: int) -> str | None:
+def resolve_h3_input_mode(
+    task_name: str, image_count: int, *, frame_sequence: bool = False,
+) -> str | None:
     # Validate an H3 task's reference count and resolve Scene's inferred mode.
     mode = get_h3_mode(task_name)
-    return mode.resolve_input_mode(image_count) if mode else None
+    return mode.resolve_input_mode(image_count, frame_sequence=frame_sequence) if mode else None
+
+
+def get_h3_sequence_system_prompt(task_name: str, image_count: int) -> str:
+    """Keep the selected H3 format while grounding it in an observed scene."""
+    resolve_h3_input_mode(task_name, image_count, frame_sequence=True)
+    base = get_system_prompt(task_name).rstrip()
+    context = (
+        f"TOGETHER SCENE INPUT: The {image_count} attached images are chronological "
+        "samples of one observed scene. Inspect every supplied sample, including "
+        "intermediate frames. The first sample shows the starting state and the "
+        "last sample shows the ending state. Describe the visible action, poses "
+        "and camera changes as one connected scene in the selected H3 output "
+        "format, retaining all three required fields. A single sample establishes "
+        "appearance and pose only. These input rules override preset reference-count, "
+        "endpoint-interpolation and blank-prompt story rules: do not invent movement "
+        "between samples, a new story, cuts, durations or events before/after the "
+        "observed sequence. Use timing only when supplied in the user's context. "
+        "For I2VA the starting reference is the first sample; for L2VA the ending "
+        "reference is the last sample; for FL2VA the references are the first and "
+        "last samples, with every intermediate sample providing motion evidence. "
+        "Do not mistake the second sample for the final reference in a longer "
+        "sequence. A blank user prompt means describe the observed scene. Images "
+        "do not establish audio: use N/A for soundscape and music unless the user "
+        "provides or requests them. Preserve the user's explicit instructions."
+    )
+    return f"{base}\n\n{context}" if base else context
 
 
 # ============================================================================
