@@ -929,6 +929,8 @@ Backend processors can differ in image limits and motion interpretation. Review 
 
 ### Scene poses and ongoing motion
 
+Both scene tasks instruct the model to begin `performance_prompt` with the observed shot size, camera angle, composition and visible starting pose, then describe the action and expression. Include head/torso facing direction and pose-defining hand placement when visible. A still pose still needs a description: "static" alone does not tell the video model which posture to hold. Keep these details in the generation paragraph itself; the separate `framing` and `start_pose` fields are supporting observations and are not added to H3 prompts. Existing saved paragraphs need another analysis run or an edit in Prompt Review to gain missing details.
+
 Scene Motion Analysis treats each window as an excerpt that can begin mid-gesture. Its start/end pose fields describe positions already present in the boundary frames; actions describe observed changes between frames, including small finger/wrist movements while the arms stay raised. Partial or ambiguous arcs belong in uncertainty. Recognized movement verbs in pose fields produce a review warning while preserving the description. Existing saved descriptions cannot recover motion omitted by an earlier analysis, so rerun those windows for the updated task.
 
 ### Concise scene observations and black-frame filtering

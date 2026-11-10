@@ -1,3 +1,20 @@
+## 2026-11-10
+
+### Version: 1.1.14
+
+- **Fix**
+  - Update Scene Motion Analysis and Scene Description (T2V) instructions to lead generation paragraphs with framing and the visible starting pose, including facing direction and relevant hand placement. Describe stationary poses explicitly and remove conflicting guidance to omit resting details.
+  - Upgrade recognized scene-task defaults in both Standard and NSFW profiles while preserving customized prompts.
+- **Docs**
+  - Explain that H3 receives the generation paragraph and that existing scene descriptions need to be regenerated or edited to include missing framing and pose.
+- **Changed files**
+  - .defaults/config/system_prompts.json.example
+  - .defaults/config/system_prompts_nsfw.json.example
+  - Readme/Smart_LM_Loader_Guide.md
+  - core/migration.py
+  - core/sml/scene_motion.py
+  - pyproject.toml
+
 ## 2026-11-09
 
 ### Version: 1.1.13

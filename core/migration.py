@@ -25,6 +25,10 @@ _DEFAULT_VALUE_UPGRADES = {
             "4eaa0d61488fb8b2ccabc649aeac083b79072fb6494228b9029e6a621f2d1d1f",
             "1ddd6fd73194869e50d35bac16436a52028e59d53e98547b5ea6506e3c972115",
             "fe779c2bf14f1dd2523ebd6ac0ece1ccee455fa6bfe767d4bfc53704bcaa1d35",
+            "e3c9d8f7719220558da3888b3c3cb0af1c18e18f1a058b148bc3885233f46d78",
+        ),
+        "Scene Description (T2V)": (
+            "e5230e5988a684dc9b82137d241b932d0d723ac8b9126d8f32dafb6173f71f4e",
         ),
         "Simple Description": (
             "041c44d1996e1c159dcc9ea5151d0bded5a1c752ed3427a3de088bc34ed3adc0",
@@ -167,6 +171,10 @@ _DEFAULT_VALUE_UPGRADES = {
             "4eaa0d61488fb8b2ccabc649aeac083b79072fb6494228b9029e6a621f2d1d1f",
             "1ddd6fd73194869e50d35bac16436a52028e59d53e98547b5ea6506e3c972115",
             "fe779c2bf14f1dd2523ebd6ac0ece1ccee455fa6bfe767d4bfc53704bcaa1d35",
+            "e3c9d8f7719220558da3888b3c3cb0af1c18e18f1a058b148bc3885233f46d78",
+        ),
+        "Scene Description (T2V)": (
+            "e5230e5988a684dc9b82137d241b932d0d723ac8b9126d8f32dafb6173f71f4e",
         ),
         "Simple Description": (
             "b8743371674846abe85fcfa070a9c2ab37e9eedd52a09e46dff6f8f09e14f8f8",
