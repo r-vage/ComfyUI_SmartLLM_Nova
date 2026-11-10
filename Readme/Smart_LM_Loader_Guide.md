@@ -164,6 +164,31 @@ system-prompt file.
 The **Sampling** mode button enables custom sampling values. Model contains
 Registry, Delete and Refresh actions; full verification is available in Registry Manager.
 
+#### Model lifetime and explicit unloading
+
+The loader handles prompt/image lists and chained tasks within one execution.
+It loads once and reuses that model for the whole call. With **Keep loaded off**,
+cleanup runs after the entire call, including its task chain, or after an error.
+
+An external loop invokes the loader again for each iteration. **Keep loaded on**
+allows those calls to reuse the model; the loader does not know which iteration
+is last. Add **Smart LM Unload [SmartLLM Nova]** after the completed loop:
+
+`Loop End → Smart LM Unload → downstream consumer`
+
+The unload node has one `value` input and one matching output. It preserves the
+data type, list shape and value, with no extra settings. Active, it clears
+SmartLLM's retained native model caches and stops its managed inference
+containers, including Ollama. Bypassed, it only passes data through. It runs
+again on each queue even when the upstream result is cached. Place it after all
+tasks that need the retained models; it refuses cleanup while another SmartLLM
+execution is using them and reports a failed container stop rather than passing
+the result onward. Unrelated ComfyUI models and containers are unaffected.
+
+Keep the output connected to the downstream work that should wait for cleanup.
+For scene analysis, connect **Loop End → Smart LM Unload → Save Scene Analysis**;
+putting it directly after the loader inside the loop would unload every iteration.
+
 #### Image handling section
 
 Open **Image handling** below Model. It has its own collapsed summary and pin

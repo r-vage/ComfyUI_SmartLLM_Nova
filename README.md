@@ -57,6 +57,13 @@ chained tasks, detection, converters and Registry Manager, including its
 
 ### Start with Smart LM Loader
 
+To reuse a model across repeated tasks or a loop, enable **Keep loaded**. Connect
+the final result through **Smart LM Unload [SmartLLM Nova]** before the next
+generation stage to release retained SmartLLM models. The node has one input and
+one output, passes data unchanged, and skips unloading when bypassed. For an
+external loop, place it after **Loop End**. See
+[model lifetime](Readme/Smart_LM_Loader_Guide.md#model-lifetime-and-explicit-unloading).
+
 Search for `Smart LM Loader [SmartLLM Nova]` in **Add Node**. Choose a registered
 model, then select the task it should perform. The interface responds to the
 model family: a vision model exposes image-aware tasks, while text-only and

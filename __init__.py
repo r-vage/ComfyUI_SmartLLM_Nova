@@ -92,6 +92,7 @@ class SmartLLMExtension(ComfyExtension):
         from .py.RvLoader_SmartLMLoader import (
             RvLoader_SmartModelLoader_LM,
         )
+        from .py.RvModel_SmartLMUnload import RvModel_SmartLMUnload
         from .py.RvPipe_SmartDetectionPrompt import RvPipe_SmartDetectionPrompt
         from .py.RvPipe_SmartLMPrompt import RvPipe_SmartLMPrompt
 
@@ -105,6 +106,7 @@ class SmartLLMExtension(ComfyExtension):
             RvConfig_SmartDetectionSettings,
             RvPipe_SmartLMPrompt,
             RvPipe_SmartDetectionPrompt,
+            RvModel_SmartLMUnload,
         ]
 
 

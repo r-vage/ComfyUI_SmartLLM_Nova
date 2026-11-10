@@ -1,5 +1,19 @@
 ## 2026-11-10
 
+### Version: 1.1.15
+
+- **Feat**
+  - Add Smart LM Unload with one input and output. Pass results unchanged while releasing retained SmartLLM models and managed inference containers after the last task or loop; bypass keeps them loaded. Protect active inference and report container-stop failures.
+- **Docs**
+  - Explain internal list/task-chain reuse, external loop boundaries and explicit unloading before downstream generation.
+- **Changed files**
+  - README.md
+  - Readme/Smart_LM_Loader_Guide.md
+  - core/sml/model_cache.py
+  - core/sml/model_unload.py
+  - py/RvModel_SmartLMUnload.py
+  - pyproject.toml
+
 ### Version: 1.1.14
 
 - **Fix**

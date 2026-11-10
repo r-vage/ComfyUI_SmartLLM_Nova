@@ -296,6 +296,12 @@ def clear_all_model_caches(*, include_text_encoders=True):
     except ImportError:
         pass  # WD14 module not available
 
+    # Detection models share the same explicit unload boundary. Avoid importing
+    # an optional detection backend merely to clear an unused cache.
+    _yolo_mod = sys.modules.get(f"{_pkg}.backend_yolo")
+    if _yolo_mod and _yolo_mod.is_yolo_cached():
+        _yolo_mod.unload_yolo_model()
+
     # Force final cleanup
     gc.collect()
     if torch.cuda.is_available():
@@ -305,7 +311,7 @@ def clear_all_model_caches(*, include_text_encoders=True):
     log.debug(_LOG_PREFIX, "All model caches cleared")
 
 
-def stop_all_docker_containers():
+def stop_all_docker_containers(*, strict=False):
     # Stop all running Docker containers for LLM backends.
     #
     # This is called when switching between backends to free GPU VRAM.
@@ -317,10 +323,10 @@ def stop_all_docker_containers():
     # - SGLang Docker containers
     # - Ollama Docker container
     # - llama.cpp Docker containers
-    stop_other_docker_containers(exclude_backend=None)
+    stop_other_docker_containers(exclude_backend=None, strict=strict)
 
 
-def stop_other_docker_containers(exclude_backend: Optional[str] = None):
+def stop_other_docker_containers(exclude_backend: Optional[str] = None, *, strict=False):
     # Stop Docker containers for LLM backends, optionally excluding one.
     #
     # This is called when switching between backends to free GPU VRAM.
@@ -337,6 +343,7 @@ def stop_other_docker_containers(exclude_backend: Optional[str] = None):
     # - Ollama Docker container
     # - llama.cpp Docker containers
     log.debug(_LOG_PREFIX, f"Stopping Docker containers (exclude={exclude_backend})...")
+    failures = []
 
     # Stop vLLM Docker containers
     if exclude_backend != "vLLM (Docker)":
@@ -345,11 +352,13 @@ def stop_other_docker_containers(exclude_backend: Optional[str] = None):
 
             if backend_vllm_docker.get_running_vllm_containers():
                 log.msg(_LOG_PREFIX, "Stopping vLLM Docker container(s)...")
-                backend_vllm_docker.stop_vllm_container()
+                if not backend_vllm_docker.stop_vllm_container():
+                    failures.append("vLLM")
         except ImportError:
             pass
         except Exception as e:
             log.debug(_LOG_PREFIX, f"  Error stopping vLLM containers: {e}")
+            failures.append("vLLM")
 
     # Stop SGLang Docker containers
     if exclude_backend != "SGLang (Docker)":
@@ -358,11 +367,13 @@ def stop_other_docker_containers(exclude_backend: Optional[str] = None):
 
             if backend_sglang_docker.get_running_sglang_containers():
                 log.msg(_LOG_PREFIX, "Stopping SGLang Docker container(s)...")
-                backend_sglang_docker.stop_sglang_container()
+                if not backend_sglang_docker.stop_sglang_container():
+                    failures.append("SGLang")
         except ImportError:
             pass
         except Exception as e:
             log.debug(_LOG_PREFIX, f"  Error stopping SGLang containers: {e}")
+            failures.append("SGLang")
 
     # Stop Ollama Docker container
     if exclude_backend != "Ollama (Docker)":
@@ -371,11 +382,13 @@ def stop_other_docker_containers(exclude_backend: Optional[str] = None):
 
             if backend_ollama_docker.is_ollama_container_running():
                 log.msg(_LOG_PREFIX, "Stopping Ollama Docker container...")
-                backend_ollama_docker.stop_ollama_container()
+                if not backend_ollama_docker.stop_ollama_container():
+                    failures.append("Ollama")
         except ImportError:
             pass
         except Exception as e:
             log.debug(_LOG_PREFIX, f"  Error stopping Ollama container: {e}")
+            failures.append("Ollama")
 
     # Stop llama.cpp Docker containers
     if exclude_backend != "llama.cpp (Docker)":
@@ -384,10 +397,18 @@ def stop_other_docker_containers(exclude_backend: Optional[str] = None):
 
             if backend_llamacpp_docker.get_running_llamacpp_containers():
                 log.msg(_LOG_PREFIX, "Stopping llama.cpp Docker container(s)...")
-                backend_llamacpp_docker.stop_llamacpp_container()
+                if not backend_llamacpp_docker.stop_llamacpp_container():
+                    failures.append("llama.cpp")
         except ImportError:
             pass
         except Exception as e:
             log.debug(_LOG_PREFIX, f"  Error stopping llama.cpp containers: {e}")
+            failures.append("llama.cpp")
 
-    log.debug(_LOG_PREFIX, "Docker containers stopped")
+    if failures:
+        message = "Could not stop SmartLLM Docker backend(s): " + ", ".join(failures)
+        if strict:
+            raise RuntimeError(message)
+        log.warning(_LOG_PREFIX, message)
+    else:
+        log.debug(_LOG_PREFIX, "Docker containers stopped")
