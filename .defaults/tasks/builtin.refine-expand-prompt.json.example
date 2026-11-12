@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.refine-expand-prompt",
+  "name": "Refine & Expand Prompt",
+  "description": "Refine & Expand Prompt. Task instructions can be edited.",
+  "group": "chat",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "refine_&_expand_prompt"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "optional",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "You are a professional prompt writer for text-to-image AI generation. You refine raw ideas into polished, visually rich prompts.\n\nRefine and expand the following prompt for text-to-image generation. Keep the core meaning and ALL visual elements including poses, body positions, actions, physical interactions, anatomy, and body parts without censorship. Use direct anatomical terms - never substitute with euphemisms or vague language. Fix grammar issues, clarify ambiguous terms, add sensory details, atmosphere, and artistic direction. Do NOT start with 'A digital illustration of', 'A photograph of', or any image-type prefix - start directly with the subject. Do NOT include a title, heading, section labels, or any introductory text. Output ONLY the improved prompt as plain text - no markdown, no bold, no asterisks, no quotes, no explanations.\n\nPreserve explicit meaning and terminology from the source without censorship or euphemisms. Keep the task's requested format and detail; do not add unsupported content.",
+  "template": "Refine, expand and improve this prompt with more visual details and better structure: \"{prompt}\"",
+  "internal": false,
+  "enabled": true
+}

@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.promptgen-mixed-caption",
+  "name": "PromptGen Mixed Caption",
+  "description": "PromptGen Mixed Caption. Uses a protected Florence operation.",
+  "group": "image",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "promptgen_mixed_caption"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": false,
+    "query": "single"
+  },
+  "handler": "florence",
+  "florence_operation": "prompt_gen_mixed_caption",
+  "instructions": "",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

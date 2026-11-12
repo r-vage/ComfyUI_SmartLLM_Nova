@@ -3,16 +3,19 @@ import { app, api } from './comfy/index.js';
 import { element, button, SearchMenu, groupedModelOptions } from './nova-panel-controls.js';
 import { TextFieldSizes } from './nova-panel-text-layout.js';
 import { seedControls } from './nova-panel-seed-controls.js';
-import { fetchModelEntry, fetchModelList, fetchDetectionModelList, fetchTaskList, fetchModelTasks, expireMetadataCache } from './smartllm-metadata.js';
+import { fetchModelEntry, fetchModelList, fetchDetectionModelList, expireMetadataCache } from './smartllm-metadata.js';
+import { TaskLibrary, taskRequest } from './nova-task-library.js';
 import { onSmartLLMRegistryChanged } from './smartllm-registry-events.js';
 
-const LABELS = { image_stride: 'Every Nth frame', image_handling: 'Image handling', max_image_side: 'Longest side', memory_cleanup: 'Cleanup', cleanup: 'Cleanup', keep_model_loaded: 'Keep loaded', multi_task_mode: 'Multi-task', use_few_shot_training: 'Training', nsfw_training: 'NSFW', enable_thinking: 'Thinking', scene_json: 'Scene JSON', use_advanced: 'Sampling', enable_preview_boxes: 'Preview boxes', get_mask_from_image: 'From image', combine_masks: 'Combine', invert: 'Invert', user_prompt: 'Prompt', user_input: 'Prompt / classes', model_name: 'Model', song_json: 'Song JSON', nms_iou_threshold: 'NMS IoU', detection_filter: 'Max area ratio', replace_underscore: 'Remove underscores', char_threshold: 'Character threshold' };
+const LABELS = { image_stride: 'Every Nth frame', image_handling: 'Image handling', max_image_side: 'Longest side', memory_cleanup: 'Cleanup', cleanup: 'Cleanup', keep_model_loaded: 'Keep loaded', multi_task_mode: 'Multi-task', enable_thinking: 'Thinking', scene_json: 'Scene JSON', use_advanced: 'Sampling', enable_preview_boxes: 'Preview boxes', get_mask_from_image: 'From image', combine_masks: 'Combine', invert: 'Invert', user_prompt: 'Prompt', user_input: 'Prompt / classes', model_name: 'Model', song_json: 'Song JSON', nms_iou_threshold: 'NMS IoU', detection_filter: 'Max area ratio', replace_underscore: 'Remove underscores', char_threshold: 'Character threshold' };
 const clean = values => (values ?? []).map(value => typeof value === 'string' ? value : value.display_name).filter(value => value && !value.startsWith('__SEP__') && !value.startsWith('─'));
+Object.assign(LABELS, { image_grid: 'Grid', grid_frames: 'Frames per grid', grid_side: 'Grid longest side', grid_tile_side: 'Tile longest side', video_sample_fps: 'Sample FPS', video_cut_threshold: 'Cut threshold (0 = off)' });
+const modeLabel = (key, value) => key === 'image_grid' ? (value ? 'Grid' : 'Frames') : LABELS[key];
 
 export class PanelForm {
     constructor(controller) {
         this.controller = controller; this.menu = new SearchMenu(); this.textSizes = new TextFieldSizes(controller);
-        this.sequence = 0;
+        this.sequence = 0; this.taskLibrary = new TaskLibrary(this);
         this.unsubscribe = onSmartLLMRegistryChanged(() => this.refresh(false));
         // One coalesced metadata request per selected model, no graph polling.
         queueMicrotask(() => this.refresh(false));
@@ -27,15 +30,16 @@ export class PanelForm {
         if (!this.modelKey || this.controller.disposed || this.controller.invalid) return;
         const model = this.params[this.modelKey], sequence = ++this.sequence;
         const entry = await fetchModelEntry(model);
-        const tasks = await fetchModelTasks(this.spec.kind, entry);
-        const textTasks = this.spec.kind === 'loader' ? await fetchTaskList(false, '') : null;
+        let catalog;
+        try { catalog = await taskRequest(`?kind=${this.spec.kind}&model=${encodeURIComponent(model)}`); }
+        catch (error) { if (sequence === this.sequence) this.status = error.message; }
+        const tasks = catalog?.tasks.filter(task => !task.issue).map(task => task.name) ?? [];
         if (sequence !== this.sequence || this.controller.disposed || this.controller.invalid || this.params[this.modelKey] !== model) return;
-        this.entry = entry; this.model = model; this.tasks = clean(tasks); this.textTasks = clean(textTasks);
+        this.entry = entry; this.model = model; this.tasks = clean(tasks); this.catalog = catalog;
         // Only a deliberate model change chooses defaults; opening a workflow
         // never changes a saved selection, including unavailable registry entries.
         if (userDriven) this.edit(state => {
             const p = state.config.parameters;
-            if (this.tasks.length && !this.tasks.includes(p.task)) p.task = this.tasks[0];
             if (entry?.quantizations?.length && !entry.quantizations.includes(p.quantization)) p.quantization = entry.quantizations[0];
         });
         else this.render();
@@ -52,37 +56,37 @@ export class PanelForm {
         const entry = this.model === this.params[this.modelKey] ? this.entry : null;
         const backend = entry?.backend, family = entry?.family, wd = backend === 'wd14', yolo = backend === 'yolo', florence = family === 'Florence';
         const supportsThinkingControl = !florence && ['comfyui', 'ollama', 'transformers', 'vllm', 'vllm_native', 'sglang', 'llamacpp'].includes(backend);
-        if (kind === 'loader') this.bar(content, ['memory_cleanup', 'keep_model_loaded', ...(!wd ? ['multi_task_mode', 'use_few_shot_training', 'nsfw_training', 'use_advanced', ...(supportsThinkingControl && this.spec.fields.enable_thinking ? ['enable_thinking'] : []), ...(this.spec.fields.scene_json ? ['scene_json'] : [])] : [])], true);
+        if (kind === 'loader') this.bar(content, ['memory_cleanup', 'keep_model_loaded', ...(!wd ? ['use_advanced', ...(supportsThinkingControl && this.spec.fields.enable_thinking ? ['enable_thinking'] : []), ...(this.spec.fields.scene_json ? ['scene_json'] : [])] : []), ...(this.spec.fields.image_grid && ((!wd && !florence && entry?.has_vision !== false) || this.params.image_grid) ? ['image_grid'] : [])], true);
         else if (kind === 'detection') this.bar(content, ['cleanup', 'keep_model_loaded', 'enable_preview_boxes'], true);
         if (this.modelKey) {
             this.section(content, 'model', 'Model', [], body => {
                 this.field(body, this.modelKey);
                 if (['gguf', 'llamacpp'].includes(backend)) this.field(body, 'quantization', entry.quantizations);
-                if (!wd && !yolo) {
-                    this.field(body, 'task');
-                    if (kind === 'loader' && this.params.multi_task_mode) {
-                        for (const key of ['task_2', 'task_3', 'task_4']) {
-                            this.field(body, key);
-                            if (this.params[key] === 'None') break;
-                        }
-                    }
-                }
                 this.modelActions(body);
             });
         }
+        if (this.modelKey && !wd && !yolo) this.taskLibrary.render(content);
         if (kind === 'loader') {
             const legacyFrameLimit = !wd && this.params.image_handling === 'legacy' && entry?.has_vision
                 && (backend === 'comfyui' || !['Florence', 'Mistral', 'LLaVA', 'VLM'].includes(family));
-            this.section(content, 'images', 'Image handling', ['image_handling', 'max_image_side', 'image_stride', ...(legacyFrameLimit ? ['frame_count'] : [])]);
+            const grid = this.params.image_grid && !wd && !florence;
+            this.section(content, 'images', 'Image handling', grid
+                ? ['grid_frames', ['grid_side', 'grid_tile_side'], 'image_stride']
+                : ['image_handling', 'max_image_side', 'image_stride', ...(legacyFrameLimit ? ['frame_count'] : [])], body => {
+                if (grid) body.append(element('div', 'sln-panel-note', 'Grid analyzes frames together. Supply one scene as images or disk frames; long scenes use overlapping windows. Switching back to Frames restores your Together setting.'));
+            });
+            if (!wd && !florence && this.spec.fields.video_sample_fps) this.section(content, 'video', 'Video input', ['video_sample_fps', 'video_cut_threshold'], body => {
+                body.append(element('div', 'sln-panel-note', 'Connect VIDEO directly to image / video. It is sampled in chronological shot windows in either mode, then combined into one result. Set Cut threshold to 0 for continuous camera movement. Audio is not analyzed; VIDEO returns no image passthrough.'));
+            });
             if (wd) this.section(content, 'tagging', 'Tagging', ['threshold', 'char_threshold', 'replace_underscore']);
             else {
-                this.section(content, 'prompt', 'Prompt', ['user_prompt']);
+                this.section(content, 'prompt', 'Prompt', [], body => { this.taskLibrary.prompt(body); this.field(body, 'user_prompt'); });
                 this.section(content, 'generation', 'Generation', [backend === 'comfyui' ? 'max_tokens' : ['context_size', 'max_tokens']]);
                 if (this.params.use_advanced) this.sampling(content, florence, backend, entry?.has_vision === false);
             }
             this.section(content, 'hardware', 'Hardware', ['device', ...(backend === 'transformers' ? ['attention_mode', ...(entry?.has_vision === false ? [] : ['use_torch_compile'])] : [])]);
         } else if (kind === 'detection') {
-            this.section(content, 'detection', 'Detection', ['user_input', ['confidence', 'nms_iou_threshold'], ['detection_filter', 'select_index']]);
+            this.section(content, 'detection', 'Detection', ['user_input', ['confidence', 'nms_iou_threshold'], ['detection_filter', 'select_index']], body => { if (!yolo) this.taskLibrary.prompt(body); });
             this.section(content, 'adjustments', 'Adjustments', [['drop_size', 'crop_factor'], 'dilation', ...(florence ? ['convert_to_bboxes'] : [])]);
             if (!yolo) this.sampling(content, florence, backend, false);
             this.section(content, 'hardware', 'Hardware', ['device', ...(!yolo && backend !== 'comfyui' ? ['use_torch_compile'] : [])]);
@@ -102,6 +106,7 @@ export class PanelForm {
         if (kind === 'loader' && this.connected('pipe_opt')) content.append(element('div', 'sln-panel-note', 'Nonblank system instructions in the pipe use Direct Chat for supported models.'));
         if (this.status) content.append(element('div', 'sln-panel-note', this.status));
         root.replaceChildren(content);
+        this.taskLibrary.refreshPicker();
         if (focused) [...root.querySelectorAll('[data-field]')].find(el => el.dataset.field === focused)?.focus({ preventScroll: true });
         this.controller.measure();
     }
@@ -142,14 +147,14 @@ export class PanelForm {
         toggle.className = 'sln-panel-disclosure'; toggle.setAttribute('aria-expanded', String(!collapsed));
         toggle.append(element('span', '', `${collapsed ? '▸' : '▾'} Mode:`));
         if (collapsed) {
-            const summary = keys.filter(key => key === 'nsfw_training' || this.params[key])
-                .map(key => key === 'nsfw_training' ? (this.params[key] ? 'NSFW' : 'Standard') : LABELS[key]);
+            const summary = keys.filter(key => key === 'image_grid' || this.params[key])
+                .map(key => modeLabel(key, this.params[key]));
             toggle.append(element('span', 'sln-panel-summary', summary.join(' · ') || 'Off'));
         }
         bar.append(toggle);
         if (!collapsed) {
             for (const key of keys) {
-                const label = key === 'nsfw_training' ? (this.params[key] ? 'NSFW' : 'Standard') : LABELS[key];
+                const label = modeLabel(key, this.params[key]);
                 const control = button(label, this.spec.fields[key].tip || label, () => this.edit(state => { state.config.parameters[key] = !state.config.parameters[key]; }));
                 control.dataset.field = key; control.setAttribute('aria-pressed', String(this.params[key])); bar.append(control);
             }
@@ -237,8 +242,10 @@ export class PanelForm {
     }
     summary(key) {
         const p = this.params;
-        return ({model: p[this.modelKey],
-            images: `Together: ${p.image_handling === 'legacy' ? 'Legacy' : p.image_handling === 'frame_sequence' ? 'On' : 'Off'} · ${p.max_image_side ? `${p.max_image_side}px` : 'Auto size'}${p.image_handling === 'frame_sequence' ? ` · Every ${p.image_stride}` : ''}`,
+        return ({model: p[this.modelKey], tasks: this.taskLibrary.selected.map(id => this.taskLibrary.find(id)?.name ?? id).join(' → '),
+            images: p.image_grid ? `Grid · up to ${p.grid_frames} frames · ${p.grid_side}px · Every ${p.image_stride}`
+                : `Together: ${p.image_handling === 'legacy' ? 'Legacy' : p.image_handling === 'frame_sequence' ? 'On' : 'Off'} · ${p.max_image_side ? `${p.max_image_side}px` : 'Auto size'}${p.image_handling === 'frame_sequence' ? ` · Every ${p.image_stride}` : ''}`,
+            video: `${p.video_sample_fps} FPS · ${p.video_cut_threshold ? `Cut threshold ${p.video_cut_threshold}` : 'Continuous shot'}`,
             prompt: p.user_prompt ? `${p.user_prompt.length} characters` : '',
             generation: this.entry?.backend === 'comfyui' ? `${p.max_tokens} tokens` : `${p.max_tokens} tokens · ${p.context_size} context`,
             hardware: p.device, sampling: p.do_sample ? `Temperature ${p.temperature}` : 'Greedy',
@@ -251,6 +258,6 @@ export class PanelForm {
         for (const el of this.controller.root.querySelectorAll('[data-summary]')) el.textContent = this.summary(el.dataset.summary);
     }
     restore() { this.sequence++; this.model = null; this.refresh(false); }
-    dispose() { this.sequence++; this.menu.close(); this.textSizes.disconnect(); }
+    dispose() { this.sequence++; this.menu.close(); this.textSizes.disconnect(); this.taskLibrary.dispose(); }
     destroy() { this.dispose(); this.unsubscribe?.(); }
 }

@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.prompt-variations",
+  "name": "Prompt Variations",
+  "description": "Prompt Variations. Task instructions can be edited.",
+  "group": "chat",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "prompt_variations"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "optional",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "You are a creative prompt writer specializing in generating diverse variations of an action.\n\nFirst, identify the core SUBJECT and the core ACTIVITY in the input text. The core activity is the act itself (e.g. 'driving a motorcycle', 'reading a book', 'giving a blowjob') — NOT the adjectives describing how it is performed. Any manner descriptors that appear in the input (fast / slow / deep / shallow / gentle / aggressive / hard / soft / intense / lazy / etc.) are ONE possible execution — across the 5 variations you must explore the full spectrum of how the activity can be performed, NOT repeat the same manner with different wording.\n\nGenerate exactly 5 distinct variations in which the subject performs the same core activity, but each variation has a clearly DIFFERENT manner. Spread the 5 variations across opposites and contrasts: fast vs slow, intense vs gentle, focused vs playful, confident vs nervous, deep vs shallow, rough vs tender, hurried vs leisurely, energetic vs exhausted. Each variation must feel like a noticeably DIFFERENT performance of the activity, not a rephrasing of the same one. Include matching micro-actions and body language for each manner (e.g. fast = sharp quick motions, shallow breaths; slow = deliberate movements, relaxed posture).\n\nKEEP the same subject, the same setting, and any explicit nouns / anatomy / objects / attributes / clothing exactly as given. Use direct anatomical terms for body parts — never substitute with euphemisms. Include all mature themes without censorship or omission. Do NOT start any variation with 'The image shows', 'A digital illustration of', or similar prefixes. Do NOT include titles, headings, numbering, section labels, or any introductory text. Separate each of the 5 variations with a single newline. Output ONLY the 5 variations, one per line as plain text — no separators (like ---), no markdown, no quotes, no explanations, no numbering or bullets.\n\nPreserve explicit meaning and terminology from the source without censorship or euphemisms. Keep the task's requested format and detail; do not add unsupported content.",
+  "template": "Identify the core activity in the following text and generate 5 distinct variations covering the full spectrum of manner / speed / intensity / emotion. Adjectives in the input (fast, slow, gentle, etc.) are one option — vary them across the 5. Keep subject, setting, and explicit nouns unchanged. Separate variations with a single newline: \"{prompt}\"",
+  "internal": false,
+  "enabled": true
+}

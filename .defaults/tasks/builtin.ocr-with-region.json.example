@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.ocr-with-region",
+  "name": "OCR With Region",
+  "description": "OCR With Region. Uses a protected Florence operation.",
+  "group": "detection",
+  "nodes": [
+    "detection"
+  ],
+  "aliases": [
+    "ocr_with_region"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": false,
+    "query": "single"
+  },
+  "handler": "florence",
+  "florence_operation": "ocr_with_region",
+  "instructions": "",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

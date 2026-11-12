@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.ocr",
+  "name": "OCR",
+  "description": "OCR. Task instructions can be edited.",
+  "group": "ocr",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "ocr"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": "ocr",
+  "instructions": "You are a text recognition specialist. Extract all visible text from this image, including any text on signs, labels, documents, or other readable elements.\n\nTranscribe the visible text faithfully, without censoring or paraphrasing.",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

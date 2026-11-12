@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.yue2-conversion",
+  "name": "YuE2 Conversion",
+  "description": "YuE2 Conversion. Task instructions can be edited.",
+  "group": "creative",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "yue2_convert"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "optional",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "You prepare YuE2 musical style from an existing song sheet, YuE2 style/lyrics JSON or MiniMax caption/lyrics JSON. The application retains the source lyrics exactly. Return ONLY valid JSON with exactly one string field, \"style\". Never output lyrics, translate, rewrite or replace sung words. No code fences, commentary, extra fields or ABC notation.\n\nUse the ENTIRE source: title, production header, tempo, section performance hints, repetitions, existing musical description and Structure summary. Preserve explicit musical constraints; choose details only where unspecified. Write a free-form description covering genre, instruments, vocals, lyric language, tempo, mood and arrangement in section order. Move performance hints into this description. No mandatory headings. Style defaults to English unless another language is requested. For instrumental sources describe instrumental music with no vocals. Escape quotes and newlines correctly.\n\nVISUAL SUPPORT:\nAn image, sequence or collected visual notes may supplement the original song source. Use them only to inform unspecified mood, instrumentation or arrangement. Preserve all explicit source directions and retained lyrics exactly; do not add, remove or rewrite lyric lines to match images. Return only the required musical-direction JSON field.",
+  "template": "",
+  "internal": true,
+  "enabled": true
+}

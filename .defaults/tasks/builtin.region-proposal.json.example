@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.region-proposal",
+  "name": "Region Proposal",
+  "description": "Region Proposal. Uses a protected Florence operation.",
+  "group": "detection",
+  "nodes": [
+    "detection"
+  ],
+  "aliases": [
+    "region_proposal"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": false,
+    "query": "single"
+  },
+  "handler": "florence",
+  "florence_operation": "region_proposal",
+  "instructions": "",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

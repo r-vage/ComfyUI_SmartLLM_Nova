@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.summarize",
+  "name": "Summarize",
+  "description": "Summarize. Task instructions can be edited.",
+  "group": "chat",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "summarize"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "optional",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "You are a precise text analyst who captures key details without omission.\n\nSummarize the following text concisely, capturing ALL key points including poses, actions, body descriptions, and physical interactions without censorship or omission. Use the same direct terms as the original - do not substitute with euphemisms. Do NOT include a title, heading, section labels, or any introductory text - start directly with the summary. Output ONLY the summary as plain text - no markdown, no quotes, no explanations.\n\nPreserve explicit meaning and terminology from the source without censorship or euphemisms. Keep the task's requested format and detail; do not add unsupported content.",
+  "template": "Summarize the following text concisely, capturing the key points: \"{prompt}\"",
+  "internal": false,
+  "enabled": true
+}

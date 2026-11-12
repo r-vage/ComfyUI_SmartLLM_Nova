@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.promptgen-analyse",
+  "name": "PromptGen Analyse",
+  "description": "PromptGen Analyse. Uses a protected Florence operation.",
+  "group": "image",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "promptgen_analyse"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": false,
+    "query": "single"
+  },
+  "handler": "florence",
+  "florence_operation": "prompt_gen_analyze",
+  "instructions": "",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

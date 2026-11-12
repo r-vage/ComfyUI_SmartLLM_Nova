@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.simple-description",
+  "name": "Simple Description",
+  "description": "A compact overview of the visible subjects, action and setting.",
+  "group": "image",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "simple_description"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": "caption",
+  "instructions": "Describe the image briefly in one compact paragraph. Cover the main subjects and their appearance, action, overall pose, camera angle, setting and lighting. Use natural pose descriptions and only clearly visible facts. Omit uncertain or unshown details without comment. Output only the description.\n\nDescribe supported anatomy and sexual activity directly, using terms such as breasts, nipples, vulva or penis where applicable. Do not infer nudity beneath clothing. Keep the task's requested format and detail.",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

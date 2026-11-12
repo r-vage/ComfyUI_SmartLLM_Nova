@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.image-analysis",
+  "name": "Image Analysis",
+  "description": "Factual analysis of subjects, spatial arrangement and composition.",
+  "group": "image",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "image_analysis"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "Analyze the image in factual paragraphs. Describe the subjects, appearance, actions, overall poses and interactions, then explain their spatial arrangement, camera angle, setting, lighting and composition. Base observations on visible evidence; omit uncertain or unshown details without comment. Output only the analysis, without headings.\n\nDescribe supported anatomy and sexual activity directly, using terms such as breasts, nipples, vulva or penis where applicable. Do not infer nudity beneath clothing. Keep the task's requested format and detail.",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

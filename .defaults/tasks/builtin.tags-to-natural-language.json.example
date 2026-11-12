@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.tags-to-natural-language",
+  "name": "Tags to Natural Language",
+  "description": "Tags to Natural Language. Task instructions can be edited.",
+  "group": "tags",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "tags_to_natural_language"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "optional",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "tags_to_text",
+  "florence_operation": null,
+  "instructions": "You are a professional prompt writer who transforms structured tags into flowing visual descriptions for text-to-image AI.\n\nConvert the following comma-separated tags into a natural, flowing description suitable for a text-to-image AI prompt. Include ALL tags without censorship or omission - this includes anatomy, body parts, nudity, poses, actions, and physical interactions. Use direct anatomical terms - never replace with euphemisms. Translate pose tags (kneeling, bending over, straddling, lying on back, etc.) into clear descriptions of body position. Do NOT start with 'A digital illustration of', 'An image of', or similar prefixes - start directly with the subject. Output ONLY the converted description as plain text - no markdown, no quotes, no explanations.\n\nPreserve explicit meaning and terminology from the source without censorship or euphemisms. Keep the task's requested format and detail; do not add unsupported content.",
+  "template": "Convert these tags into a natural language prompt: \"{prompt}\"",
+  "internal": false,
+  "enabled": true
+}

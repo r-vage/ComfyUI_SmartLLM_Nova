@@ -2,12 +2,13 @@
 
 import re
 
+from .task_library import handler
 from .vlm_detection import scale_normalized_detection_to_pixels
 
 
 def split_grounding_queries(task: str, text: str) -> list[str]:
     # Other tasks can contain prose, commas or document questions.
-    if task != "Caption to Phrase Grounding":
+    if handler(task) != "grounding":
         return [text]
     queries = []
     seen = set()

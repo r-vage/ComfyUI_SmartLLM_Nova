@@ -77,7 +77,7 @@ and **Hardware** for device settings. Collapsing a section does not disable it.
 |-------|------|---------|-------------|
 | **model_name** | Dropdown | — | Detection model. Suffix indicates backend |
 | **quantization** | Dropdown | Q4_K_M | Registered GGUF backends only — quantization variant. Native encoders use the selected file's precision |
-| **task** | Dropdown | — | Detection task. Florence: 7 tasks, Qwen/native vision encoders: 2 tasks, YOLO: hidden |
+| **task** | Single selection | — | Select a compatible task in the Tasks section. Edit or duplicate its instructions; Florence uses protected native operations. YOLO uses its class controls. |
 | **user_input** | String | — | Phrase grounding: separate targets with commas, semicolons or newlines, such as `eye, breast` or `the black cat; the white dog`. Each target runs independently. YOLO: optional semicolon-separated filter among classes supported by the selected model; leave empty to detect all classes |
 
 #### Detection Parameters
@@ -287,6 +287,17 @@ Set `user_input` to semicolon-separated class names to filter detections:
 Matching is fuzzy: substring and plural/singular tolerance (`eye` matches `eyes`, `breast` matches `Breasts`).
 
 ---
+
+## Editable task library
+
+Click **Tasks** below **Model** to open the task list on the left and editor on the
+right. Detection selects one task; phrase
+grounding already processes comma-separated targets independently. Model controls,
+query text, thresholds and output sockets remain in their existing sections.
+Use **Edit** to customize or duplicate a task. Stable IDs preserve selections through
+renaming, while removed tasks remain unavailable until restored or replaced.
+Florence's operation determines its token, query support and parser; natural-language
+instructions apply to chat-capable vision models. See [Task library](Task_Library.md).
 
 ## Tasks Reference
 

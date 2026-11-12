@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.custom-instruction",
+  "name": "Custom Instruction",
+  "description": "Custom Instruction. Task instructions can be edited.",
+  "group": "chat",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "custom_instruction"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "optional",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "You are a helpful assistant. Provide concise, direct responses to the user prompt.\n\nPreserve explicit meaning and terminology from the source without censorship or euphemisms. Keep the task's requested format and detail; do not add unsupported content.",
+  "template": "Generate a detailed prompt from \"{prompt}\"",
+  "internal": false,
+  "enabled": true
+}

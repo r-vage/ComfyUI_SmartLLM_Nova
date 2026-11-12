@@ -36,6 +36,7 @@
 .sln-panel-section-header { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .sln-panel .sln-panel-section-toggle { display: flex; flex: 1; align-items: center; min-width: 0; border: 0; padding: 3px 0; color: var(--sln-text); background: transparent; text-align: left; }
 .sln-panel-section-header > button:last-child { flex: 0 0 28px; width: 28px; height: 28px; padding: 0; }
+.sln-panel .sln-panel-section-header > .sln-task-trigger { flex: 1; width: auto; gap: 8px; }
 .sln-panel-section-body { padding-top: 7px; }
 .sln-panel-tools { display: flex; gap: 5px; }
 .sln-panel-tools > :last-child { margin-left: auto; }
@@ -50,3 +51,34 @@
 .sln-panel-option-group + .sln-panel-option-group { margin-top: 4px; }
 .sln-panel-results button { display: block; width: 100%; padding: 5px 7px; text-align: left; background: transparent; color: var(--sln-text); border: 1px solid transparent; border-radius: 3px; font: inherit; cursor: pointer; }
 .sln-panel-results button:is(:hover,[aria-selected="true"]) { background: var(--sln-design-option-bg); color: var(--sln-accent); border-color: var(--sln-design-control-border); }
+.sln-task-list { height: 240px; min-height: 100px; max-height: 720px; resize: vertical; overflow: auto; border: 1px solid var(--sln-design-divider); border-radius: 5px; overscroll-behavior: contain; }
+.sln-task-list [hidden] { display: none; }
+.sln-task-group > summary { cursor: pointer; user-select: none; }
+.sln-task-group > summary:hover { color: var(--sln-text); background: var(--sln-design-control-bg); }
+.sln-task-group > summary:focus-visible { outline: 1px solid var(--sln-accent); outline-offset: -1px; }
+.sln-task-input-policy { font-weight: normal; }
+.sln-task-row { display: flex; align-items: center; gap: 5px; padding: 4px; border-bottom: 1px solid var(--sln-design-divider); }
+.sln-task-row > label, .sln-task-row > span:first-child { flex: 1; min-width: 0; }
+.sln-task-row > label { display: flex; gap: 7px; align-items: center; cursor: pointer; }
+.sln-task-row input { width: 14px; height: 14px; flex: 0 0 14px; accent-color: var(--sln-accent); }
+.sln-task-row small { display: block; color: var(--sln-muted); font-size: 10px; }
+.sln-task-row[data-unavailable="true"] > label { color: var(--sln-muted); }
+.sln-task-step { color: var(--sln-accent); }
+.sln-task-chain { display: flex; flex-direction: column; gap: 4px; }
+.sln-task-preview { display: flex; flex-direction: column; gap: 6px; }
+.sln-task-preview textarea { margin-block: 7px; }
+.sln-task-picker { width: min(1180px, calc(100vw - 32px)); height: min(780px, calc(100vh - 32px)); min-width: min(680px, calc(100vw - 32px)); min-height: min(460px, calc(100vh - 32px)); max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); resize: both; overflow: hidden; padding: 16px; background: var(--sln-design-node-bg); color-scheme: var(--sln-design-color-scheme); border: 1px solid var(--sln-design-control-border); border-radius: 8px; box-shadow: var(--sln-design-menu-shadow); }
+.sln-task-picker[open] { display: flex; flex-direction: column; gap: 12px; }
+.sln-task-picker::backdrop { background: rgb(0 0 0 / .5); }
+.sln-task-columns { display: grid; grid-template-columns: minmax(250px, .85fr) minmax(300px, 1.15fr); gap: 16px; flex: 1; min-height: 0; }
+.sln-task-choices, .sln-task-editor { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.sln-task-choices > .sln-task-list { flex: 1 0 160px; height: auto; max-height: none; resize: none; }
+.sln-task-choices > .sln-task-chain { max-height: 180px; flex-shrink: 0; overflow: auto; }
+.sln-task-editor { padding-left: 16px; border-left: 1px solid var(--sln-design-divider); }
+.sln-task-editor > .sln-panel-note { overflow-wrap: anywhere; }
+.sln-task-editor > .sln-panel-tools { flex-wrap: wrap; }
+.sln-task-editor details > .sln-panel-content, .sln-task-editor details > label { margin-top: 8px; }
+@media (max-width: 700px) {
+    .sln-task-columns { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(180px, .9fr) minmax(180px, 1.1fr); }
+    .sln-task-editor { padding-left: 0; padding-top: 12px; border-left: 0; border-top: 1px solid var(--sln-design-divider); }
+}

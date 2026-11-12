@@ -6,9 +6,7 @@ from functools import partial
 
 import torch
 
-_DESCRIPTION_TASKS = frozenset({
-    "Simple Description", "Detailed Description", "Ultra Detailed Description",
-})
+from .task_library import get_task
 
 
 class _ThinkingBudget:
@@ -57,7 +55,9 @@ def description_thinking_budget(clip, architecture, task_name, max_tokens, *, pr
     raw Qwen3.5 chat templates and other native families retain their behavior.
     Forced closing tokens count towards the same total as model-generated tokens.
     """
-    eligible = enabled and task_name in _DESCRIPTION_TASKS and architecture.startswith(("QWEN3_", "QWEN35_"))
+    task = get_task(task_name)
+    caption = task is not None and task.florence_id in {'caption', 'detailed_caption', 'more_detailed_caption'}
+    eligible = enabled and caption and architecture.startswith(("QWEN3_", "QWEN35_"))
     if not eligible or architecture.startswith("QWEN35_") and not prefilled:
         yield {}
         return

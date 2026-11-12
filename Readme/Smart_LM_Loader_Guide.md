@@ -99,12 +99,12 @@ The **Smart LM Loader** is a unified node for loading and running vision-languag
 | **Registry-Based Model Selection** | Unified dropdown with 50+ models grouped by backend — no templates, no manual paths |
 | **Auto-Download** | Full repositories download from Hugging Face; targeted GGUF/mmproj files can also use ModelScope, with immutable revision and integrity verification |
 | **Backends** | ComfyUI text encoders, Transformers, GGUF, vLLM, SGLang, Ollama, llama.cpp and WD14; YOLO uses Smart Detection |
-| **Image Handling** | Independent Together toggle, longest-side sizing and frame stride; text-only requests need no images |
+| **Image Handling** | Frames/Grid mode, Together, bounded native VIDEO sampling, sizing and frame stride; text-only requests need no images |
 | **Scene Tasks** | Motion for a separate image reference or full T2V descriptions, with generation prose and observations in one response |
-| **Multi-Task Chaining** | Chain 2–4 sequential tasks with output→input flow |
-| **Few-Shot Training** | Per-task example pairs (user-editable in `config/`), toggleable via **Training** button |
-| **Editable System Prompts** | Customize per-task instructions in `config/system_prompts.json` (Standard) or `config/system_prompts_nsfw.json` (NSFW) |
-| **Mode Bar** | Cleanup, Keep loaded, Multi-task, Training, Standard/NSFW, Sampling, Thinking (supported backends), Local seed |
+| **Multi-Task Chaining** | Select compatible tasks in order, with output→input flow |
+| **Task Instructions** | One editable instruction set per task, with no example conversations or profile switches |
+| **Editable System Prompts** | Preview instructions in Prompt; edit the task file or Direct Chat’s local system text |
+| **Mode Bar** | Cleanup, Keep loaded, Sampling, Thinking (supported backends), Local seed |
 | **Persist-on-Execute** | Advanced parameters (temperature, top_p, etc.) saved to defaults on each run |
 | **Docker Lifecycle** | Auto-start/stop containers, stale image detection |
 | **Image Passthrough** | Input images flow through to the output for downstream nodes |
@@ -129,10 +129,7 @@ progress.
 |-------|------|---------|-------------|
 | **model** | Dropdown | — | Model from registry. Suffix indicates backend (no suffix=Transformers, -GGUF, -vLLM, -SGLang, -Ollama, -llama.cpp) |
 | **quantization** | Dropdown | Q4_K_M | Native GGUF and llama.cpp Docker — quantization variant |
-| **task** | Dropdown | Detailed Description | Task to perform. Vision tasks require an image |
-| **task_2** | Dropdown | None | Optional 2nd task (multi-task mode) |
-| **task_3** | Dropdown | None | Optional 3rd task (multi-task mode) |
-| **task_4** | Dropdown | None | Optional 4th task (multi-task mode) |
+| **Tasks** | Separate resizable panel | Detailed Description | Select one task or an ordered compatible chain on the left; edit reusable instructions and templates on the right |
 | **user_prompt** | String | — | Optional additional information, question, or constraints. The selected task already loads its system prompt, so this is normally empty for standard vision tasks |
 | **context_size** | Integer | 8192 | Model context window (512–131072). Persisted on execute |
 | **max_tokens** | Integer | 4096 | Maximum tokens to generate (1–32768) |
@@ -145,21 +142,15 @@ progress.
 |------|---------|-------------|
 | **Cleanup** | ON | Pre-load VRAM cleanup — free memory before loading |
 | **Keep Loaded** | OFF | Cache model in VRAM between runs |
-| **Multi-Task** | OFF | Enable sequential task chaining (shows task_2/3/4) |
 | **Sampling** | ON | Enable custom sampling values |
 | **Thinking** | OFF | Requests reasoning through ComfyUI, Ollama, Transformers, vLLM, SGLang or llama.cpp server controls. The model/template must support switching. Saved per node and applied through task chains; older workflows default to off. |
-| **Standard / NSFW** | Standard | Select this node's system prompts and, when Training is on, its examples. The button remains available with Training off. Other nodes and root config are unchanged. |
-| **Training** | ON | Include few-shot training examples in the prompt. Disable to omit examples while retaining the selected Standard/NSFW system prompts. |
 | **Local seed** | ON | Use the Seed section; disable to use a connected seed_input |
 
-**NSFW** uses `config/system_prompts_nsfw.json` regardless of the Training
-switch. With **Training** enabled it also uses
-`config/llm_few_shot_training_nsfw.json`. **Standard** uses their counterparts
-without `_nsfw`. Training supplies examples in the context; it does not train or
-modify model weights. Each node keeps its selected prompts and examples stable during
-an execution; file edits are read on the next execution. A custom system prompt
-supplied through the panel or a settings/prompt pipe takes precedence over either
-system-prompt file.
+Each task has one instruction set. Training and NSFW switches are removed; their
+values in older workflows are ignored. The initial library uses the current bundled
+tasks. Old prompt, training and profile files are ignored; they do not create drafts
+or supply examples. Edit the individual tasks to customize their instructions.
+See [Task library](Task_Library.md) for editing and upgrade details.
 
 The **Sampling** mode button enables custom sampling values. Model contains
 Registry, Delete and Refresh actions; full verification is available in Registry Manager.
@@ -202,6 +193,50 @@ selected.
 | **Every Nth frame** (`image_stride`) | 1 | Together only; samples the supplied selection and always retains its first and last image. |
 | **Max frames** (`frame_count`) | 8 | Applicable Legacy configurations only. Explicit Together uses the supplied selection without this last-N cap. |
 
+The mode bar's **Frames / Grid** button defaults to **Frames**, preserving saved
+workflows. **Grid** builds numbered contact sheets inside the loader and implies
+Together without overwriting its saved value. Switching back restores that choice.
+In Grid mode, Image handling shows:
+
+| Control | Default | Description |
+| --- | --- | --- |
+| **Frames per grid** | 8 | At most 16; the loader reduces capacity when necessary to keep source tiles readable. |
+| **Grid longest side** | 2048 | Contact-sheet ceiling, separate from individual-frame sizing and subject to model limits. |
+| **Tile longest side** | 512 | Source tile ceiling; aspect ratio is preserved and source images are never enlarged. |
+| **Every Nth frame** | 1 | Samples IMAGE/disk frames, retaining both endpoints. Native VIDEO uses Sample FPS instead. |
+
+Tiles are read left to right, top to bottom. Labels sit outside the source image.
+The selected task instructions still apply. Scene JSON records the
+original frame positions plus the actual grid layout; H3 validates the number of
+source frames, not the number of contact sheets. Florence and WD14 require
+individual images and cannot use Grid or native VIDEO analysis.
+
+Supply one scene as an IMAGE sequence or disk source. Long selections use bounded
+windows with up to two overlapping frames. Each window is analyzed independently;
+a final text-only synthesis combines the observations into one result, removing
+overlap without treating each window as a new opening pose. Large observation
+sets use staged synthesis within the configured context allowance. Max tokens
+applies to each generation, including synthesis. Single-window requests need no
+extra call. The loader reuses the loaded model throughout.
+
+Grid can only see the frames supplied in the current call. For a complete scene
+from Eclipse, sample across that scene and set its upstream window capacity high
+enough to deliver the selection together. Existing external windows remain
+separate loader calls; Grid does not read other jobs or change detected cuts.
+
+The **image / video** socket also accepts native ComfyUI **VIDEO**, without a
+conversion node. Its **Video input** section provides **Sample FPS** (default 2)
+and **Cut threshold** (default 27). Video is decoded in small chunks, honoring
+native trims/crops, and retains both shot endpoints. Frames mode uses up to 16
+images per window; with Longest side 0, native VIDEO frames are bounded to 1024px
+before model processing. Grid uses its configured tile size and capacity. Native concatenation
+boundaries are preserved. Cut detection is a heuristic: lower thresholds detect
+more changes and may split camera movement. Set 0 for a known continuous shot.
+Video timestamps are frame-rate estimates because the native component API does
+not provide presentation timestamps. Use Eclipse's measured timing for exact
+cut planning. Audio is not analyzed. VIDEO and disk inputs return no IMAGE
+passthrough, avoiding full-video retention in graph caches.
+
 Bound large sequences upstream with sampling or overlapping windows. For 16
 images together, supply up to 16 images and set Together On with Every Nth = 1;
 the model's own image/context limits still apply. See [image sequences and scene
@@ -234,7 +269,7 @@ Panel values are saved with the workflow. Shared generation defaults are updated
 
 | Input | Type | Description |
 |-------|------|-------------|
-| **images** | IMAGE | Images for vision tasks and WD14; optional visual context for text tasks on vision-capable models |
+| **image / video** (`images`) | IMAGE, VIDEO | IMAGE tensors or native ComfyUI VIDEO; video requires a supported VLM. Existing IMAGE links and slot indices are preserved. |
 | **frame_source** | SMARTLLM_FRAME_SOURCE | Optional lazy frame input for bounded analysis loops; use instead of images, never both |
 | **seed_input** | INT | Optional unsigned 64-bit seed, used when Local seed is disabled |
 | **pipe_opt** | Settings | Optional Smart LM Settings or Smart LM Prompt Pipe output; carries settings and user/system prompts. See [subgraph settings](Nova_Panels.md#native-settings-and-subgraphs). |
@@ -257,7 +292,7 @@ or Song Lyrics.
 
 | Output | Type | Description |
 |--------|------|-------------|
-| **image** | IMAGE | Ordinary input image passthrough, or a 64×64 placeholder without images; lazy frame_source returns an empty list |
+| **image** | IMAGE | Ordinary input image passthrough, or a 64×64 placeholder without images; native VIDEO and lazy frame_source return an empty list |
 | **text** | STRING | Generated text or tags |
 
 ---
@@ -389,7 +424,7 @@ CPU transfers can make generation slower. Smaller input images and lower
 
 Local Transformers, YOLO and WD14 loading also use ComfyUI's selected device for memory reservations. Unsupported WD14/Florence accelerator paths use CPU. Managed GPU servers and native llama.cpp vision projectors cannot honor CPU selection and report that restriction; local Transformers and ComfyUI encoders support CPU vision.
 
-Prompts, task chaining, image batches, connected instructions and exact seeds retain Nova's existing workflow. **Training** uses the node's Standard/NSFW examples as labeled demonstrations in the system instructions; the native tokenizer accepts a single prompt rather than a chat message list.
+Prompts, task chaining, image batches, connected instructions and exact seeds retain Nova's existing workflow. The native tokenizer receives the task's system instructions and user guidance without example conversations.
 
 The **Thinking** button in the Mode bar defaults to **off**. Native ComfyUI
 requests the tokenizer's non-thinking template. Turn it on to allow reasoning
@@ -553,28 +588,37 @@ ONNX Runtime for SmilingWolf WD14 tagger models.
 | **Direct Chat** | Optional | Interactive conversation |
 | **Question Answering** | Optional | Answer questions about image or text |
 | **Custom Instruction** | Optional | Use your own prompt in user_prompt |
-| **Wan 2.2 Scene 5s** | Optional | One cinematic paragraph for a 5-second Wan 2.2 video (no timeline markers) |
-| **Wan 2.2 Timeline 5s** | Optional | One paragraph using `(At 0 seconds: ...) ... (At 5 seconds: ...)` markers (per-second beats) |
-| **Wan 2.2 Timeline 5s 2s** | Optional | Slower 3-beat timeline `(At 0s)(At 2s)(At 4s)` — each beat unfolds before the next |
-| **Wan 2.2 Timeline 5s 3s** | Optional | Slowest 2-beat timeline `(At 0s)(At 3s)` — long, unhurried action arcs |
-| **Wan 2.2 Scene 10s** | Optional | Two continuous 5-second scene paragraphs with subject and setting continuity |
-| **Wan 2.2 Timeline 10s** | Optional | Two 5-second timeline paragraphs with continuous action and per-second beats |
-| **Wan 2.2 Scene 20s** | Optional | Four cinematic paragraphs (5s each) with maintained character / scene continuity |
-| **Wan 2.2 Timeline 20s** | Optional | Four timeline paragraphs (5s each), each with per-second markers |
+| **Wan 2.2** | Optional | One cinematic motion paragraph from text, an image or an ordered scene sequence; no timestamps or fixed duration |
 | **Wan 2.2 CN Atomic** | Optional | Chinese Wan prompt using explicit initial state, ordered physical actions, and final state |
-| **LTX 2.3 I2V** | Recommended | One image-to-video paragraph combining the reference image with requested motion, sound, dialogue, and style |
+| **LTX 2.3 I2V** | Optional | One `Style: ...` paragraph combining text, a reference image or a scene sequence with requested motion and audio |
 | **MiniMax H3 Scene** | 0–2 | One continuous duration-neutral scene; zero/one/two images select T2VA/I2VA/FL2VA, and an empty prompt enables automatic storytelling |
-| **MiniMax H3 T2VA Timeline** | None | Text-only shot timeline planned within H3's maximum 15-second range |
+| **MiniMax H3 T2VA Timeline** | None | Text-only action and requested shot progression, without numeric timing |
 | **MiniMax H3 I2VA Timeline** | First | Timeline beginning exactly on one first-frame image |
 | **MiniMax H3 FL2VA Timeline** | First; optional last | Timeline starting from the first reference and landing on the encoder-supplied last frame; an optional second reference lets the VLM inspect both endpoints |
 | **MiniMax H3 L2VA Timeline** | Last | Timeline converging on one last-frame image |
 
-These reference counts describe Legacy H3 inputs. With **Together on**, the
-image-capable H3 tasks also accept an ordered scene sequence from `images` or
-`frame_source`. Every selected sample contributes to one description in the H3
-three-field format; intermediate samples are retained and the last supplied
-sample is the visual endpoint. With **Together off**, each supplied image gets
-its own request. **T2VA Timeline** remains text-only.
+These reference counts describe Legacy H3 inputs. With **Together** or **Grid**,
+the four image-capable H3 tasks also accept an ordered scene sequence from the
+image / video socket or `frame_source`. Every selected sample contributes to one
+description in the same three-field format. A grid's tiles represent moments in
+the scene; one contact sheet does not select single-reference mode. The first and
+last samples establish the observed boundaries, and intermediate samples remain
+motion evidence. **T2VA Timeline** remains text-only.
+
+Enter additional guidance in **Prompt** with either input mode. Scene requests
+retain that guidance through window analysis and final synthesis. They describe
+the observed scene unless you explicitly request a change, and do not force the
+reference modes' shot counts or endpoint interpolation.
+With **Together off**, each supplied image gets its own reference-mode request.
+
+Wan and LTX also combine user guidance with a single image or an ordered scene
+sequence. They retain observed poses, opening framing, camera movement and cuts;
+stationary moments do not require invented motion. Video duration comes from the
+downstream generation settings. The built-in Wan, LTX and H3 prompts describe
+action order without adding seconds, timestamps, cut times or total duration.
+The former English Wan duration/beat variants resolve to **Wan 2.2**. Untouched
+old variants are archived on startup; customized variants retain their own files
+and selections. Chinese **Wan 2.2 CN Atomic** remains a separate output format.
 
 ### Vision Tasks (all VLM families)
 
@@ -592,19 +636,17 @@ its own request. **T2VA Timeline** remains text-only.
 | **Scene Description (T2V)** | Generation paragraph and observations including visible appearance, setting, lighting and motion |
 | **OCR** | Extract text from image |
 
-Simple, Detailed, and Ultra Detailed each have four example pairs in both the
-Standard and NSFW training profiles. All three cover the action, visible people
-and their appearance, overall pose, camera angle, background, and lighting, with
-different levels of detail and no rigid sentence limit. Poses use natural
-descriptions such as "kneeling with legs apart"; individual limb positions are
-included when they help explain the action. Ultra Detailed develops each area
-with distinct visible details, keeps each person's features and actions together,
-and avoids repeated facts or generic mood conclusions. Its examples use paragraph
-breaks while retaining their scene descriptions. The NSFW examples retain full scene
-coverage, direct anatomical terms, size descriptions, and explicit actions across
-all three modes. Unshown or uncertain details are omitted silently. These are
-text demonstrations of caption style, not image-based training or model updates.
-Updates replace recognized bundled entries while preserving customized entries.
+General vision tasks use short instructions without example conversations. Simple Description requests a compact overview, Detailed Description a developed
+paragraph, and Ultra Detailed Description several connected paragraphs with smaller
+visible details. They cover subjects, appearance, action, overall pose, camera angle,
+setting and lighting. Cinematic Description emphasizes framing and visual style;
+analysis tasks examine composition and spatial relationships; Tags returns only
+comma-separated tags; Video Summary follows the supplied frames chronologically.
+
+Visual instructions include direct anatomical terms for supported content and keep the
+task's requested format and detail. Uncertain or unshown details are omitted silently,
+and nudity is not inferred beneath clothing. Edit the task to change its focus or wording.
+Updates replace recognized defaults while preserving customized instructions.
 
 ### Vision Tasks (Florence-only)
 
@@ -633,18 +675,28 @@ Updates replace recognized bundled entries while preserving customized entries.
 
 ---
 
-## Multi-Task Mode
+## Task selection and chaining
 
-Chain 2–4 sequential tasks where each task's output becomes the input for the next.
+Click **Tasks** below **Model** to open the task panel. The left side keeps selected
+tasks at the top in execution order, then groups available tasks under Vision and
+Text. Search filters available tasks while selected tasks remain easy to deselect.
+**Edit** opens a task's fields on the right without changing the selection.
+Check compatible tasks to form a chain (up to 32 stages), then use the
+numbered selection and arrows to review its order. The same model serves every stage.
+Unavailable choices explain their input or model requirements. Missing/deleted saved
+tasks remain visible; select a replacement or restore them explicitly.
 
-### How It Works
+The first stage receives the user's guidance and supplied images. Each following
+stage receives the prior text, its own system instructions and template. Structured scene/H3/music outputs must finish the chain. Lyric sheets can
+feed Music 3 or YuE2 conversion. Florence executes one supported native operation.
+Legacy Task 2–4 selections retain their saved order.
 
-1. Enable the **Multi-task** button on the mode bar
-2. Set **task_2** (and optionally task_3, task_4)
-3. **Task 1** loads its task-specific system prompt and runs with the image plus any optional `user_prompt` context
-4. **Task 2** receives the text output from Task 1
-5. **Task 3/4** continue the chain
-6. Final output is returned
+**Prompt** previews system instructions. **Direct Chat** also provides a local editable
+system field. Connected system instructions still select Direct Chat and replace
+local instructions. Native ComfyUI encoders receive a system/user pair;
+older LLaVA/llama-cpp-python vision handlers combine instructions with the image's
+user message. Chat-capable backends retain separate system and user roles.
+[Task library](Task_Library.md) describes reusable edits and custom tasks.
 
 ### Example: Image → Tags → Natural Language → Expanded Prompt
 
@@ -660,7 +712,7 @@ Chain 2–4 sequential tasks where each task's output becomes the input for the 
 - Only Task 1 uses the image input — subsequent tasks are text-only
 - Model is loaded once and reused for all tasks
 - KV cache is cleared between tasks to prevent VRAM accumulation
-- Few-shot training is applied per task (disable with the **Training** button to reduce context pressure on small-context models)
+- Each stage sends its task instructions and user text without example conversations
 - Florence does not support multi-task chaining
 
 ---
@@ -752,24 +804,25 @@ Docker backends are configured in `docker_config.json`:
 ### Audio-Video Prompt (Wan, LTX, or MiniMax H3)
 
 1. Select a text-capable model for text-to-video, or a vision-language model when images are required
-2. Choose the Wan/LTX task, the compact **MiniMax H3 Scene**, or the explicit H3 T2VA/I2VA/FL2VA/L2VA timeline task matching your inputs. H3 task labels are duration-neutral; timeline prompts use the model's 15-second maximum as their planning range unless you request a shorter duration
-3. For H3 reference-based generation, connect no image for T2VA, one first-frame image for I2VA, one first-frame image or an ordered first/last pair for explicit FL2VA, or one last-frame image for L2VA. Legacy retains those count checks. To describe a sampled scene, connect either `images` or `frame_source` and enable **Together**: the image-capable H3 tasks inspect every selected frame in one request, including intermediate frames. Off processes images individually
-4. For **MiniMax H3 Scene**, enter a short description of what should happen. With Together on and images supplied, an empty prompt describes the observed scene, without automatically inventing a story, cuts, duration, sound or music; explicit user instructions remain active. Without images, or with Together off/Legacy, an empty prompt retains automatic storytelling: zero images create an original story, one image grounds it in that frame, and a Legacy pair supplies its endpoints. That story mode adds scene-appropriate music and sound, with dialogue only when plausible. For a supplied prompt, describe the action, dialogue, sound, pacing, and any camera behavior that should occur. Natural language can set a feasible one-to-four shot count for timeline tasks, such as “tell this in 3 shots.” Requested views are honored in order, so “side view, then POV, then overhead” maps those views to Shots 1–3. “Track Mara” or “track the blue cart” becomes a Tracking Shot naming that target
+2. Choose **Wan 2.2**, **LTX 2.3 I2V**, the compact **MiniMax H3 Scene**, or the explicit H3 T2VA/I2VA/FL2VA/L2VA task matching your inputs. Generation settings control duration; task prompts describe action and shot order without numeric timing
+3. For H3 reference-based generation, connect no image for T2VA, one first-frame image for I2VA, one first-frame image or an ordered first/last pair for explicit FL2VA, or one last-frame image for L2VA. Legacy retains those count checks. To describe sampled frames, connect the image / video socket or `frame_source` and enable **Together** or **Grid**. Native VIDEO also uses scene mode. The four image-capable H3 tasks retain intermediate samples; long grid/video inputs use bounded windows and a final merge. Off processes images individually
+4. For **MiniMax H3 Scene**, enter a short description of what should happen. With Together on and images supplied, an empty prompt describes the observed scene, without automatically inventing a story, cuts, duration, sound or music; explicit user instructions remain active. Without images, or with Together off/Legacy, an empty prompt retains automatic storytelling: zero images create an original story, one image grounds it in that frame, and a Legacy pair supplies its endpoints. That story mode adds scene-appropriate music and sound, with dialogue only when plausible. For a supplied prompt, describe the action, dialogue, sound, pacing, and any camera behavior that should occur. Natural language can request a shot count, such as “tell this in 3 shots.” Requested views are honored in order, so “side view, then POV, then overhead” maps those views to Shots 1–3. “Track Mara” or “track the blue cart” becomes a Tracking Shot naming that target
 5. Queue Prompt
 6. Send the generated text to the corresponding video workflow
 
 For explicit FL2VA, Picture 1 is the required opening-frame prompt-writing
 reference. Picture 2 is optional here because the downstream H3 encoder supplies
 and enforces the actual final frame. When both are attached, their order is
-contractual. Set **Together: On** in Image handling when supplying both images.
-Legacy configurations also preserve the pair even when `frame_count` is 1.
+contractual. Legacy configurations preserve the reference pair even when
+`frame_count` is 1. Together/Grid instead interprets the supplied images as scene
+samples, preserving the visible progression plus user guidance.
 With both pictures the VLM can trace their observable
 differences; with only Picture 1 it briefly describes the visible source state,
 continues into the complete `user_prompt` action timeline, avoids inventing unseen
 final-frame details, and still ends exactly on encoder-supplied Picture 2.
-In reference-based generation without an explicit shot count, timeline tasks create two to four purposeful,
-duration-safe shots within the maximum 15-second planning range and do not invent
-extra camera angles.
+In reference-based generation without requested cuts, H3 tasks keep one continuous
+shot. Requested cuts use ordered `[Shot N]` labels without timestamps. Scene input
+preserves observed cuts and framing changes.
 
 The images attached to Smart LM Loader are prompt-writing references: they let
 the VLM inspect available keyframes while composing text. They are not keyframe
@@ -777,7 +830,7 @@ inputs to the downstream MiniMax H3 encoder. Connect the actual first/last image
 separately to the H3 encoder's own keyframe inputs and follow that workflow's
 ordering.
 
-The selected task's built-in system prompt and optional few-shot training produce
+The selected task's system instructions request
 only the three generator-ready H3 fields as plain text. The complete shot timeline,
 soundscape, and music field are all mandatory; a response containing only image
 analysis or sound is incomplete.
@@ -785,8 +838,9 @@ For nonempty prompts, an explicit request for no background music, no score, or
 no soundtrack produces `non_diegetic_music: N/A`. This does not remove dialogue,
 ambience, or action sounds from `overall_soundscape` unless silence is also
 requested.
-An empty **MiniMax H3 Scene** prompt instead activates story mode and always creates
-an appropriate background score. Supplying a nonblank custom `system_prompt` through the pipe
+An empty **MiniMax H3 Scene** prompt without active scene input instead activates
+story mode and creates an appropriate background score. Together/Grid with visual
+input describes the observed scene when Prompt is empty. Supplying a nonblank custom `system_prompt` through the pipe
 disables automatic story mode and uses the custom instructions. Workflows saved
 with former H3 `5s` or `15s` labels are migrated automatically, although those
 retired labels are no longer shown in the task dropdown.
@@ -794,18 +848,41 @@ The H3 tasks do not ask follow-up questions or add Markdown character, clothing,
 camera, or scene sections. When an image-mode action is vague or missing, they
 animate only subtle motion supported by visible image content instead of
 inventing a new plot; the explicit empty Scene story mode is the exception.
-Disable the **Training** button when a small-context model needs a shorter prompt.
+Edit task instructions if a small-context model needs a shorter prompt; preserve the required output fields.
+
+### Stories and songs with visual support
+
+**Short Story**, **Song Lyrics**, **MiniMax Music 3** and **YuE2 Music** accept
+text alone or optional images on a vision-language model. Enter the desired
+storyline, language, tone or musical style in **Prompt**; images can supply the
+setting, subjects, mood and progression. An empty Prompt can use the visuals as
+inspiration. Text-only models ignore connected images, VIDEO and disk frames, so
+the wiring can stay connected while switching models or tasks. IMAGE passthrough
+is preserved, but unused media does not cause extra text requests or frame decoding.
+
+A single image or ordinary Together request goes directly to the selected task.
+Grid and VIDEO collect visual notes from each bounded window, combine those
+observations, then write one complete story or song from the notes and original
+user request. They do not merge independently written songs or stories. This adds
+a final text composition call while reusing the loaded model. Together off writes
+an independent result for each image.
+
+Output contracts stay unchanged: Short Story returns plain narrative; Song Lyrics
+returns a title, production line, lyric sections and Structure line; Music 3
+returns `caption`/`lyrics` JSON; YuE2 returns `style`/`lyrics` JSON. During conversion
+from existing lyrics, visual context can inform unspecified musical direction,
+while the application preserves the retained lyrics exactly.
 
 ### Song Lyrics
 
-1. Select a text-capable LLM and set task to **Song Lyrics**
+1. Select a text-capable LLM, or a vision-language model when supplying images, and set task to **Song Lyrics**
 2. Enter a short story, theme, mood, or song concept in `user_prompt`
 3. Optionally include genre, language, tempo, point of view, or desired structure
 4. Queue Prompt
 5. Copy the returned title, production line, lyric sections, and structure into Suno, Mureka, or another music-generation tool
 
-Here `user_prompt` is the creative source rather than an optional correction.
-The task's built-in system prompt turns that source into singable, consistently
+Here `user_prompt` supplies the concept and direction; optional images can provide
+visual inspiration. The task's built-in system prompt turns that source into singable, consistently
 formatted lyrics; supplying a custom `system_prompt` is unnecessary unless
 you intentionally want to replace the entire task behavior.
 
@@ -885,10 +962,8 @@ Enable in `config.json`:
 | `config.json` | Main config: LLM folder path, log level, HF token |
 | `docker_config.json` | Docker backend settings: ports, timeouts, images |
 | `registry/*.json` | Model registry files (8 backend files + defaults + user_models) |
-| `config/system_prompts.json` | Standard per-task system prompts, selected independently of Training (user-editable) |
-| `config/system_prompts_nsfw.json` | NSFW per-task system prompts, selected independently of Training (user-editable) |
-| `config/llm_few_shot_training.json` | Standard few-shot training examples |
-| `config/llm_few_shot_training_nsfw.json` | NSFW few-shot training examples |
+| `tasks/*.json` | Per-task instructions, user templates and supported behavior |
+| `tasks/.state.json`, `tasks/.trash/`, `tasks/.legacy/` | Default revisions, removed tasks and legacy migration backups |
 | `.defaults/` | Git-tracked defaults (`.example` suffix); extracted to repo on first run |
 
 ---
@@ -928,23 +1003,23 @@ The **Image handling** section below Model contains **Together**, **Longest side
 
 - **Image handling** uses a **Together** toggle: **On** sends the ordered selection in one request; **Off** runs one request per supplied image, including H3 image tasks. Older configurations show **Legacy** until clicked, preserving their saved behavior; the first click enables Together. Together bypasses the legacy last-N frame cap; upstream sampling/windowing bounds the request. Unsupported multi-image processor paths fail explicitly. Existing configurations without the switch retain their historical behavior. H3 scene sequences and first/last pairs use Together.
 - **Longest side = 0** keeps automatic model sizing. A positive value reduces input dimensions while respecting model limits and avoiding source upscaling. Dynamic patch alignment may round down. Known fixed/minimum processor sizes are checked; remote servers still own their final preprocessing. The ordinary IMAGE output retains the original input pixels.
-- **Every Nth frame** applies to Together, defaults to 1, and always includes the first and last supplied image. It samples the supplied batch, which may already have been sampled upstream. Two at 30 source fps gives 15 samples/second only when the input actually contains every original frame. Use 1 to retain brief gestures/expressions or when sampling upstream.
+- **Every Nth frame** applies to Together or Grid for IMAGE/disk input, defaults to 1, and always includes the first and last supplied image. It samples the supplied batch, which may already have been sampled upstream. Two at 30 source fps gives 15 samples/second only when the input actually contains every original frame. Use 1 to retain brief gestures/expressions or when sampling upstream.
 
-**Scene Motion Analysis** is for image-to-video. It transfers camera geometry, posture, visible movement and expression to a separate character reference. The target reference supplies appearance and setting. The task explicitly instructs the model to keep source identity, gender, clothing, accessories, colors and environment out of every output field, including `performance_prompt`, and asks the model to check that scope before returning. The paragraph and supporting observations use the same inference; there is no additional rewriting call. Use neutral subject/body terms and one to three sentences, usually 20–50 words. Physical contact remains an action without a description of the contacted item's appearance. The schema needs no `appearance` field. These instructions guide the model; review warnings remain advisory and cannot guarantee compliance.
+**Scene Motion Analysis** is for image-to-video. It transfers camera geometry, posture, visible movement and expression to a separate character reference. The target reference supplies appearance and setting. The task explicitly instructs the model to keep source identity, gender, clothing, accessories, colors and environment out of every output field, including `performance_prompt`, and asks the model to check that scope before returning. The paragraph and supporting observations use the same inference per window. Use neutral subject/body terms and enough grounded detail for the scene, without a fixed sentence count or word limit. Physical contact remains an action without a description of the contacted item's appearance. The schema needs no `appearance` field. These instructions guide the model; review warnings remain advisory and cannot guarantee compliance.
 
 **Scene Description (T2V)** includes relevant visible subjects, appearance, clothing, accessories, setting, lighting and motion directly in the generation paragraph. Its additional `appearance` field is optional supporting metadata. Omitting it needs no correction call; blank or structured values are retained with a review warning. Generation uses the unchanged `performance_prompt` paragraph. Both tasks use the same ordered images and one normal inference per window, with the existing bounded correction attempt for invalid output. Context may supply integer `scene_id` and `window_id` plus frame IDs/timestamps. A single image establishes a pose without invented movement. Neither task infers audio or unseen events.
 
-The loader records the actual task policy as `description_mode: motion` or `full`. The optional [Eclipse Nova scene-analysis nodes](https://github.com/r-vage/ComfyUI_Eclipse_Nova/blob/main/Readme/Scene_Analysis.md) measure cuts, collect descriptions and export H3 part prompts. The collector accepts motion results without appearance and preserves new task paragraphs without appearance rewriting. Use the H3 adapter's **exclude source appearance** with Motion Analysis, or **include source appearance** with T2V. The dropdown selects the intended policy; it cannot guarantee model compliance. Changing policy requires another analysis run because motion analysis does not request a complete appearance description. Custom system prompts remain user-owned and must follow the selected structure. Prompt compliance and observation accuracy still need review.
+The loader records the actual task policy as `description_mode: motion` or `full`. The optional [Eclipse Nova scene-analysis nodes](https://github.com/r-vage/ComfyUI_Eclipse_Nova/blob/main/Readme/Scene_Analysis.md) measure cuts, collect descriptions and export H3 part prompts. The collector accepts motion results without appearance and preserves new task paragraphs without appearance rewriting. Use the H3 adapter's **exclude source appearance** with Motion Analysis, or **include source appearance** with T2V. The selected task defines the intended policy; it cannot guarantee model compliance. Changing policy requires another analysis run because motion analysis does not request a complete appearance description. Custom system prompts remain user-owned and must follow the selected structure. Prompt compliance and observation accuracy still need review.
 
-The paragraph and observations use the same inference call; there is no extra summarizing model pass. Usable text with recognized appearance, gendered wording, excessive length or movement misplaced in boundary poses is preserved with `review_warnings`. Content warnings neither retry generation nor stop the scene loop. Eclipse saves the text and reports the warnings so you can copy part prompts into the manual inputs and edit them. These checks recognize bounded patterns and cannot establish semantic correctness.
+The paragraph and observations use the same inference call per window. Multi-window Grid or VIDEO requests add text synthesis; a single window does not. Usable text with recognized appearance, gendered wording or movement misplaced in boundary poses is preserved with `review_warnings`. Length alone is not a review warning. Content warnings neither retry generation nor stop the scene loop. Eclipse saves the text and reports the warnings so you can copy part prompts into the manual inputs and edit them. These checks recognize bounded patterns and cannot establish semantic correctness.
 
 If `actions`, `gaze_expression` or `uncertainties` arrives as a text string, the loader accepts it as one list item with its wording intact. A blank string becomes an empty list. This normalization happens before validation, so it needs no correction inference. Commas are preserved rather than treated as action separators.
 
-Only structural failures—invalid JSON, missing required fields, non-text list values or mismatched IDs—use the existing single correction attempt. A complete single JSON object is accepted inside an optional prose/code-fence wrapper without another call; partial JSON, arrays and multiple competing objects remain invalid. Persistent structural failures remain errors rather than silently losing scenes. New task paragraphs pass through without text cleanup; older unmarked saved analyses retain their existing cleanup. Measured cut times come from detection. A custom system prompt intentionally replaces task instructions without changing grouping or size. Recognized older defaults upgrade in both profiles; customizations remain user-owned and must satisfy the selected structure.
+Only structural failures—invalid JSON, missing required fields, non-text list values or mismatched IDs—use the existing single correction attempt. A complete single JSON object is accepted inside an optional prose/code-fence wrapper without another call; partial JSON, arrays and multiple competing objects remain invalid. Persistent structural failures remain errors rather than silently losing scenes. New task paragraphs pass through without text cleanup; older unmarked saved analyses retain their existing cleanup. Measured cut times come from detection. A custom system prompt intentionally replaces task instructions without changing grouping or size. Recognized older defaults upgrade to unified task instructions; customizations remain user-owned and must satisfy the selected structure.
 
 The structural correction retains the original images and provides the validation issue. It does not insert the rejected answer into the prompt. A usable description takes one inference, including when it needs manual content review.
 
-Every loader task that accepts images can use **frame_source** instead. The source changes how pixels are loaded; the selected task keeps its instructions and output format. Together describes the selected scene in one request on a supported VLM; Off processes frames individually. Text tasks retain their text instructions and can use a single supplied image as context. Florence and WD14 accept disk frames individually; turn Together off for multiple frames with those models. A text-only model cannot inspect either image source.
+Every loader task that accepts images can use **frame_source** instead. The source changes how pixels are loaded; the selected task keeps its instructions and output format. Together describes the selected scene in one request on a supported VLM; Off processes frames individually. Text tasks retain their text instructions and can use a supplied image as context on a vision model. Florence and WD14 accept disk frames individually; turn Together off for multiple frames with those models. Text-only models ignore connected visual sources; image-required tasks still require a vision model.
 
 For file-backed loops, the optional **frame_source** socket accepts the public `SMARTLLM_FRAME_SOURCE` version-1 protocol: an object with `version == 1`, `len(source)` in 1–256 and `iter_frames()` yielding ordered HWC RGB uint8 arrays. The producer owns the files and keeps them alive. Smart LM validates the source before loading a model, loads/resizes only the active request, closes the iterator on success or failure and returns an **empty IMAGE list** for this input to avoid retaining pixels in graph caches. Do not connect both images and frame_source. Regular IMAGE passthrough is unchanged. Existing images/seed/pipe socket indices are preserved.
 

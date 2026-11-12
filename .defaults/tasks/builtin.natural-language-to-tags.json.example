@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.natural-language-to-tags",
+  "name": "Natural Language to Tags",
+  "description": "Natural Language to Tags. Task instructions can be edited.",
+  "group": "tags",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "natural_language_to_tags"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "optional",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "text_to_tags",
+  "florence_operation": null,
+  "instructions": "You are an expert image tagger for text-to-image AI systems. You distill prose descriptions into precise, structured tag lists.\n\nConvert the following description into comma-separated tags suitable for a text-to-image AI. Include ALL visual elements without censorship: subject count (1woman, 2people), anatomy, body parts, specific pose (kneeling, bending over, straddling, lying on back, hands and knees), actions, physical interactions (hands on hips, arms around neck, legs wrapped), clothing or nudity state, colors, lighting, environment, mood, and style. Use specific descriptive tags, not euphemisms. Maximum 40 tags. Do NOT include any introductory text or explanations - output ONLY the tags as a comma-separated list.\n\nPreserve explicit meaning and terminology from the source without censorship or euphemisms. Keep the task's requested format and detail; do not add unsupported content.",
+  "template": "Convert the following description into a maximum of 40 comma-separated tags suitable for a text-to-image AI. Output ONLY the tags, no explanations: \"{prompt}\"",
+  "internal": false,
+  "enabled": true
+}

@@ -2,6 +2,10 @@ import { SeedState } from './nova-panel-seed.js';
 export class PanelState extends SeedState {
     constructor(raw, spec, editor = {}) {
         super(); this.spec = spec; this.config = JSON.parse(raw);
+        if (spec.kind === 'loader' && this.config?.parameters) {
+            delete this.config.parameters.use_few_shot_training;
+            delete this.config.parameters.nsfw_training;
+        }
         if (this.config?.parameters && spec.fields.device && ['auto', 'cuda', 'mps', 'gpu', ''].includes(this.config.parameters.device)) this.config.parameters.device = 'default';
         if (this.config.version !== 1 || this.config.kind !== spec.kind || !this.config.parameters
             || Object.entries(spec.fields).some(([key, field]) => !Object.hasOwn(this.config.parameters, key) && !field.optional)) throw Error('Unsupported configuration.');
@@ -13,11 +17,11 @@ export class PanelState extends SeedState {
     }
     toggleSection(key) {
         const open = !this.sectionOpen(key); this.editor.sections ??= {};
-        if (open) for (const other of ["model", "images", "prompt", "generation", "sampling", "tagging", "hardware", "detection", "adjustments", "mask", "seed"]) {
+        if (open) for (const other of ["model", "tasks", "images", "video", "prompt", "generation", "sampling", "tagging", "hardware", "detection", "adjustments", "mask", "seed"]) {
             if (!this.editor.pins?.[other]) this.editor.sections[other] = false;
         }
         this.editor.sections[key] = open;
     }
     value() { return JSON.stringify(this.config); }
-    sectionOpen(key) { return this.editor.sections?.[key] ?? ['model', 'images', 'prompt', 'detection', 'json'].includes(key); }
+    sectionOpen(key) { return this.editor.sections?.[key] ?? ['model', 'tasks', 'images', 'prompt', 'detection', 'json'].includes(key); }
 }

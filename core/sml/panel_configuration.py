@@ -24,6 +24,16 @@ OVERRIDES = {
 }
 DYNAMIC = {"model", "model_name", "task", "task_2", "task_3", "task_4", "quantization"}
 MAX_SEED = (1 << 64) - 1
+RETIRED_TASK_SWITCHES = {"use_few_shot_training", "nsfw_training"}
+
+
+def discard_retired_switches(parameters, kind):
+    if kind == "loader":
+        for key in RETIRED_TASK_SWITCHES:
+            if key in parameters:
+                if type(parameters[key]) is not bool:
+                    raise ValueError(f"Legacy {key} must be enabled or disabled.")
+                del parameters[key]
 
 
 def scalar(value):
@@ -112,6 +122,7 @@ def parse_configuration(raw, spec):
             or not isinstance(config["parameters"], dict)):
         raise ValueError(f"Expected version 1 {spec['title']} configuration.")
     fields = spec["fields"]
+    discard_retired_switches(config["parameters"], spec["kind"])
     provided = set(config["parameters"])
     if provided - set(fields) or any(not fields[key].get("optional") for key in set(fields) - provided):
         raise ValueError(f"Expected version 1 {spec['title']} configuration.")
@@ -132,6 +143,7 @@ def parse_configuration(raw, spec):
 def parse_settings_pipe(raw, spec):
     """Validate one settings payload without changing its producer's data."""
     params = settings_pipe_parameters(raw, spec["kind"])
+    discard_retired_switches(params, spec["kind"])
     fields = spec["fields"]
     if spec["kind"] == "loader":
         fields = {**fields, "system_prompt": SYSTEM_PROMPT_SPEC}
@@ -197,6 +209,8 @@ class SmartLLMPanel:
         if seed and (seed["source"] == "local" or scalar(_inputs.get("seed_input")) is None) and seed["policy"] != "fixed":
             return float("nan")
         if cls.PANEL_KIND in {"loader", "detection"}:
+            from .task_api import fingerprint
+            task_signature = fingerprint()
             from .text_encoders import (
                 DISPLAY_PREFIX,
                 resolve_text_encoder_path,
@@ -214,7 +228,8 @@ class SmartLLMPanel:
                     if "pipe_opt" in _inputs and scalar(_inputs["pipe_opt"]) is None:
                         return configuration
                     raise
-                return (configuration, text_encoder_signature(path))
+                return (configuration, text_encoder_signature(path), task_signature)
+            return (configuration, task_signature)
         return configuration
 
     @classmethod
@@ -223,7 +238,11 @@ class SmartLLMPanel:
         config = parse_configuration(configuration, spec)
         params = config["parameters"]
         if cls.PANEL_KIND in SETTINGS_TYPES:
-            params.update(parse_settings_pipe(inputs.pop("pipe_opt", None), spec))
+            overrides = parse_settings_pipe(inputs.pop("pipe_opt", None), spec)
+            params.update(overrides)
+            if cls.PANEL_KIND == 'loader' and 'task' in overrides and 'task_sequence' not in overrides:
+                params['task_sequence'] = ''
+                params['multi_task_mode'] = overrides.get('multi_task_mode', False)
         if cls.PANEL_KIND == "detection":
             # Older API prompts can still supply these removed sockets. The
             # saved panel values now control filtering; discard obsolete kwargs.
@@ -254,6 +273,7 @@ class SmartLLMPanel:
             if entry.get("family") != "Florence" and entry.get("backend") != "wd14":
                 params["task"] = "Direct Chat"
                 params["multi_task_mode"] = False
+                params['task_sequence'] = ''
         if cls._engine_schema().is_input_list:
             params = {key: value if key == "user_prompt" and isinstance(value, list) else [value]
                       for key, value in params.items()}

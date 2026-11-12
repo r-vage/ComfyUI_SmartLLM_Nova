@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.video-summary",
+  "name": "Video Summary",
+  "description": "A chronological narrative of actions and changes across the supplied frames.",
+  "group": "video",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "video_summary"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "Summarize the supplied frames as a chronological visual narrative in paragraphs. Cover the subjects' appearance, overall poses, actions and interactions, changes in setting and lighting, camera movement and cuts supported by the frames. Use clear temporal transitions. Omit uncertain or unshown details; do not invent events between frames. Output only the summary.\n\nDescribe supported anatomy and sexual activity directly, using terms such as breasts, nipples, vulva or penis where applicable. Do not infer nudity beneath clothing. Keep the task's requested format and detail.",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

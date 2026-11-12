@@ -4,6 +4,7 @@ import json
 import re
 from contextvars import ContextVar
 
+from .task_library import handler
 from .tasks import (
     get_system_prompt,
     push_system_prompt_override,
@@ -11,6 +12,12 @@ from .tasks import (
 )
 
 active_source: ContextVar = ContextVar("smartllm_song_source", default=None)
+
+
+def normalize_lyric_sheet(text):
+    """Unwrap a generated final metadata label without changing sung words."""
+    return re.sub(r'(?im)^[ \t]*\[Structure:?\][ \t]*(?:\r?\n[ \t]*)?([^\r\n]+)[ \t\r\n]*\Z',
+                  r'Structure: \1', text)
 
 _SECTIONS = (
     "Final Chorus", "Pre-Chorus", "Guitar Solo", "Instrumental", "Breakdown",
@@ -163,7 +170,7 @@ def resolve_sheet(source: str, previous_task: str | None, task_name: str) -> str
         rf"^\s*Repeat\s+{_SECTION}\b|^\s*Structure:",
         source,
     )
-    if previous_task == "Song Lyrics" or recognizable:
+    if handler(previous_task) == "song_lyrics" or recognizable:
         return parse_sheet(source, task_name)
     return None
 
@@ -214,7 +221,7 @@ def protected_song_json(text: str) -> str | None:
 def generate_song(task_name, source, generate, logger):
     """Retain one resolved mode through a retry and always restore caller state."""
     logger.info("Smart LM Loader", f"{task_name} mode: {source.mode}")  # noqa: PLE1205 - SmartLLM prefix/message API
-    base = get_system_prompt(source.prompt_key)
+    base = get_system_prompt(source.prompt_key if source.mode == "convert" else task_name)
     instruction = f"{base}\n\n{source.instruction()}"
     source_token = active_source.set(source)
     token = push_system_prompt_override(instruction)

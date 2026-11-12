@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.referring-expression-segmentation",
+  "name": "Referring Expression Segmentation",
+  "description": "Referring Expression Segmentation. Uses a protected Florence operation.",
+  "group": "detection",
+  "nodes": [
+    "detection"
+  ],
+  "aliases": [
+    "referring_expression_segmentation"
+  ],
+  "input": {
+    "text": "required",
+    "images": "required",
+    "sequence": false,
+    "query": "single"
+  },
+  "handler": "florence",
+  "florence_operation": "referring_expression_segmentation",
+  "instructions": "",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

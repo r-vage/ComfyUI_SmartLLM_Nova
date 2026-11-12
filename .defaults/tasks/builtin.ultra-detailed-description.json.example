@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.ultra-detailed-description",
+  "name": "Ultra Detailed Description",
+  "description": "Several descriptive paragraphs, including smaller visible details.",
+  "group": "image",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "ultra_detailed_description"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": "more_detailed_caption",
+  "instructions": "Describe the image thoroughly in several connected paragraphs, developing subjects and actions, then the setting and visual details. Include each person's appearance, clothing, overall pose and interactions, camera angle, background objects, colors, textures and lighting. Include small, clearly visible details that help reconstruct the scene. Use natural pose descriptions; omit uncertain or unshown details without comment. Avoid repetition and mood conclusions. Output only the description.\n\nDescribe supported anatomy and sexual activity directly, using terms such as breasts, nipples, vulva or penis where applicable. Do not infer nudity beneath clothing. Keep the task's requested format and detail.",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

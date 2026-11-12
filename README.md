@@ -118,9 +118,14 @@ Some generative tasks intentionally use `user_prompt` as their source material:
   fields. If you request no background music, no
   score, or no soundtrack, `non_diegetic_music` is set to `N/A` while dialogue,
   ambience, and action sounds remain in `overall_soundscape` unless you also
-  request silence. Timeline task labels are duration-neutral; their prompt writer
-  uses H3's 15-second maximum as its shot-planning range unless `user_prompt`
-  asks for a shorter duration.
+  request silence. Wan, LTX and H3 prompts leave duration to the downstream
+  generation settings and describe action order without seconds or timestamps.
+  The English Wan duration variants are consolidated into **Wan 2.2**, preserving
+  old workflow selections and customized task files.
+- **Short Story**, **Song Lyrics**, **MiniMax Music 3** and **YuE2 Music** can use
+  an optional image or sequence as visual support on a vision-language model.
+  Grid/VIDEO gather visual notes first, then write one complete story or song from
+  the notes and your prompt. Output formats and retained lyrics stay intact.
 - For **Song Lyrics**, enter a short story, theme, mood, or song concept in
   `user_prompt`. Genre, language, tempo, or structural preferences can be added
   when they matter. The result is a structured lyric sheet that can be copied
@@ -158,11 +163,21 @@ text-only, and existing Legacy reference counts are preserved.
 
 ### Use the mode bar and sections
 
-The top mode bar controls `Cleanup`, `Keep loaded`, `Multi-task`, `Training`, `Standard`/`NSFW`,
-`Sampling`, `Thinking` on supported backends, and `Local seed`. Open **Model** for model/quantization/task selection,
+The top mode bar controls `Cleanup`, `Keep loaded`,
+`Sampling`, `Thinking` on supported backends, `Scene JSON`, **Frames / Grid**, and `Local seed`. Open **Model** for model/quantization selection,
 Registry, Delete and Refresh actions. Deletion requires confirmation.
 
-Open **Image handling** below Model for **Together**, **Longest side** and
+Click **Tasks** below Model to open a resizable panel with the task list on the left
+and editor on the right. Selected loader tasks stay at the top in execution order;
+check compatible tasks to chain them. Available tasks use collapsible purpose groups:
+**Chat & Text**, **Image Description**, **Video & Scenes**, **Tags**, **Stories & Music**,
+and **OCR**. Each task shows whether images are required, optional or unused.
+Text-only models ignore connected images, video and disk frames, so media can stay
+connected when switching tasks. Detection uses one task.
+The library starts with the bundled task files; old prompt/training files are ignored.
+See [Task library](Readme/Task_Library.md) for editing, upgrades and prompt previews.
+
+Open **Image handling** below Tasks for **Together**, **Longest side** and
 **Every Nth frame**. Together sends the ordered selection in one request; Off
 processes each image separately. Longest side `0` uses automatic model limits;
 a positive value reduces images within those limits. Stride applies to Together
@@ -170,15 +185,30 @@ and keeps both endpoints. These settings remain available with Model collapsed
 and with Direct Chat selected. See [image sequences](Readme/Smart_LM_Loader_Guide.md#image-sequences-and-scene-motion)
 for legacy frame limits and bounded sampling.
 
+**Frames** is the default. Switch to **Grid** to build numbered contact sheets
+inside the loader. Grid uses Together without changing its saved setting. Supply
+one scene as IMAGE or disk frames. The default packs up to eight frames with
+512px source tiles into a grid capped at 2048px; model limits still apply.
+Long inputs use overlapping windows, analyzed independently and then combined
+into one result. A single window needs no synthesis call.
+
+The **image / video** socket accepts native ComfyUI **VIDEO** directly, preserving
+existing IMAGE connections. Video is decoded in bounded chunks, sampled at
+**Sample FPS**, and separated at detected cuts in either mode. **Cut threshold = 0**
+treats a clip as continuous; concatenated video parts remain separate shots.
+Cut detection is a heuristic and can mistake fast camera movement for a cut.
+Video and disk sources return text without retaining an IMAGE output; ordinary
+IMAGE passthrough is unchanged. Audio is not analyzed.
+
 Open **Prompt**, **Generation**, **Sampling**, **Hardware**, **Tagging** or **Seed**
 to edit the relevant settings. Pin sections to keep several open. Collapsing a
 section preserves its values and does not disable processing. `Sampling` controls
 whether custom sampling parameters are applied. `Local seed` can be turned off
 when `seed_input` is connected; the upstream value then takes priority.
 
-**Standard/NSFW** selects the system-prompt profile independently of **Training**.
-Training adds examples to the prompt; turning it off retains the selected profile
-and does not modify model weights. **Thinking** defaults off and requests reasoning
+Each task has one editable instruction set, with no Training/NSFW switches or example
+conversations. Visual instructions describe supported content directly while preserving
+the selected detail level and output format. **Thinking** defaults off and requests reasoning
 only where the model/backend supports it. Reasoning shares **Max tokens** with the
 answer, so allow enough output space for complete structured responses.
 
@@ -192,7 +222,8 @@ Use **Together: On** with an ordered frame selection and choose:
 | **Scene Description (T2V)** | Visible appearance, setting, framing and movement for text-to-video |
 
 Both tasks produce a generation paragraph and structured observations in the same
-call. Exactly black frames are filtered before inference; an all-black selection
+call per window. Their prompts have no fixed word limit; distinct observed detail
+is retained while repeated actions are summarized once. Exactly black frames are filtered before inference; an all-black selection
 keeps a black-screen result. Usable descriptions with content warnings remain
 available for manual editing. Invalid JSON or missing required fields can trigger
 one correction attempt and still fail if the structure remains unusable.
@@ -211,14 +242,16 @@ for task contracts, frame limits and review guidance.
 
 ### Chain tasks in one execution
 
-Enable `Multi-Task` to expose Task 2 through Task 4. Each active stage receives
-the previous stage's text and passes its result forward. This is useful for a
-visual description → prose conversion → prompt refinement sequence without
-adding several model nodes.
+Select compatible tasks in **Tasks**. Their numbered order is their execution order;
+use the arrows to reorder them or remove a selection with ×. The first task receives
+your prompt and any supplied images. Later tasks receive the preceding text result.
+The same loaded model handles the chain, and the final result remains the text output.
+Existing workflows with Task 2–4 retain their saved order. Florence uses one native task.
 
-
-Set unused stages to `None`. The final active stage becomes the node's text
-output, while the image output remains available for compatible workflows.
+**Prompt** previews the selected task's system instructions. With **Direct Chat**,
+you can edit a local system prompt alongside the user message; editing the task file
+changes its reusable instructions instead. A connected nonblank system prompt still
+takes priority and selects Direct Chat. See [Task library](Readme/Task_Library.md).
 
 ### Switch to WD14 tagging
 
@@ -309,7 +342,7 @@ preserved.
 
 | Node | Inputs | Outputs | Purpose |
 | --- | --- | --- | --- |
-| `Smart LM Loader [SmartLLM Nova]` | optional images or `frame_source`, seed and `pipe_opt`; panel configuration | image, text | Run vision-language, text or WD14 models; lazy frame input returns no image passthrough |
+| `Smart LM Loader [SmartLLM Nova]` | optional IMAGE/VIDEO or `frame_source`, seed and `pipe_opt`; panel configuration | image, text | Run vision-language, text or WD14 models; native VIDEO and lazy frame input return no image passthrough |
 | `Smart Detection [SmartLLM Nova]` | image; optional seed and `pipe_opt` for settings/query text; panel configuration | image, mask, SEGS, data | Run Florence/Qwen grounding or YOLO detection |
 | `Smart LM Settings [SmartLLM Nova]` | native model, task, quantization, user/system prompts and token controls | settings | Supply LM settings through `pipe_opt`, including promoted subgraph widgets |
 | `Smart LM Prompt Pipe [SmartLLM Nova]` | optional user/system prompt strings and existing settings pipe | settings | Supply external prompts through `pipe_opt` without native settings widgets |

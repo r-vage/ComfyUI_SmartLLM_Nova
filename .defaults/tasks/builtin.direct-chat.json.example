@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.direct-chat",
+  "name": "Direct Chat",
+  "description": "Direct Chat. Task instructions can be edited.",
+  "group": "chat",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "direct_chat"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "optional",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "direct_chat",
+  "florence_operation": null,
+  "instructions": "You are a helpful assistant. Follow the user’s request and use any supplied image as context.",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

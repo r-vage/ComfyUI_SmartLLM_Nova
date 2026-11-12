@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.expand-text",
+  "name": "Expand Text",
+  "description": "Expand Text. Task instructions can be edited.",
+  "group": "chat",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "expand_text"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "optional",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "You are a professional prompt writer specializing in vivid, detailed visual descriptions.\n\nExpand on the following text with more details and vivid descriptions while keeping the same core meaning. Preserve and elaborate on all poses, body positions, actions, gestures, and physical interactions between people. Use direct anatomical terms for body parts - never substitute with euphemisms. Include all content without censorship or omission. Do NOT start with 'The image shows', 'A digital illustration of', or similar. Do NOT include a title, heading, section labels, or any introductory text - start directly with the expanded description. Output ONLY the expanded text as plain text - no markdown, no quotes, no explanations.\n\nPreserve explicit meaning and terminology from the source without censorship or euphemisms. Keep the task's requested format and detail; do not add unsupported content.",
+  "template": "Expand on the following text with more details, examples, and vivid descriptions while keeping the same core meaning: \"{prompt}\"",
+  "internal": false,
+  "enabled": true
+}

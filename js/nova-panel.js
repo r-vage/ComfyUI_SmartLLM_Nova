@@ -44,6 +44,15 @@ app.registerExtension({
             if (data.input.required.configuration[1].editorSpec.kind === 'detection') {
                 queueMicrotask(() => removeDetectionOverrides(this));
             }
+            if (data.input.required.configuration[1].editorSpec.kind === 'loader') {
+                // Saved workflows retain their serialized slot type. Widen the
+                // existing slot in place so its IMAGE link and index survive.
+                const input = this.inputs?.find(input => input.name === 'images');
+                if (input && ['IMAGE', 'IMAGE,VIDEO'].includes(input.type)) {
+                    input.type = 'IMAGE,VIDEO';
+                    if (!input.label || ['images', 'image / video'].includes(input.label)) input.label = 'image / video';
+                }
+            }
             return result;
         };
         type.prototype.onAdded = function (...args) {

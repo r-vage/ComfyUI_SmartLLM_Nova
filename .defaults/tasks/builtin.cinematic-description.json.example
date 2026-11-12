@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.cinematic-description",
+  "name": "Cinematic Description",
+  "description": "One cinematic paragraph emphasizing framing, lighting and composition.",
+  "group": "image",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "cinematic_description"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "Describe the image as a cinematic shot in one paragraph. Lead with framing and camera angle, then cover the subjects' appearance, pose, action and interactions, setting, lighting, color palette and depth of field. Ground the language in visible details; omit uncertain or unshown details and invented camera movement. Output only the description.\n\nDescribe supported anatomy and sexual activity directly, using terms such as breasts, nipples, vulva or penis where applicable. Do not infer nudity beneath clothing. Keep the task's requested format and detail.",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

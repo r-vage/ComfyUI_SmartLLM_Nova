@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.detailed-description",
+  "name": "Detailed Description",
+  "description": "A detailed paragraph covering subjects, pose, surroundings and lighting.",
+  "group": "image",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "detailed_description"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": "detailed_caption",
+  "instructions": "Describe the image in one detailed paragraph. Cover each main subject's appearance, clothing, action and overall pose, their interactions, camera angle, setting and lighting. Include distinctive visible colors, textures and objects. Use natural pose descriptions; omit uncertain or unshown details without comment. Output only factual descriptive prose.\n\nDescribe supported anatomy and sexual activity directly, using terms such as breasts, nipples, vulva or penis where applicable. Do not infer nudity beneath clothing. Keep the task's requested format and detail.",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

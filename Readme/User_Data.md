@@ -16,16 +16,27 @@ Themes use their own once-only record, `.theme-defaults.json`. The bundled
 remain yours. Put custom themes in `themes/custom/`, then use **Reload themes** in
 Appearance. See [Node design](Node_Design.md).
 
-The loader's **Standard / NSFW** button selects `config/system_prompts.json`
-or `config/system_prompts_nsfw.json` for that node, independently of **Training**.
-Training adds examples from `config/llm_few_shot_training.json` or
-`config/llm_few_shot_training_nsfw.json` for the selected profile; turning it off
-omits those examples while retaining the profile's system prompts. It does not
-train model weights. Files remain user-editable; a later execution reads changes
-without changing another loader or the root configuration. Custom system
-instructions supplied directly to a node take precedence over these prompt files.
+Each task lives in `tasks/<stable-id>.json`, with its input policy, system instructions,
+user template and output behavior. Use **Tasks → Edit** to edit, duplicate or remove it.
+There is one instruction set per task, without profiles or example conversations.
+An execution keeps a consistent snapshot; later executions read saved changes.
+
+The initial task library uses the current `.defaults/tasks/` definitions. Old
+`config/system_prompts*.json`, `config/llm_few_shot_training*.json` and
+`config/task_profiles.json` files are ignored and left on disk. Their custom entries
+are not imported as drafts. Customize tasks directly through the Tasks panel or their
+individual files. Existing task-file edits remain yours; version 1 task files are
+backed up under `tasks/.legacy/v1/` before upgrading their own fields to version 2,
+without importing shared prompt/profile files. Task IDs preserve saved selections through renames.
+Removed tasks stay removed; use **Removed tasks** to restore tasks deleted in the editor.
+`tasks/.state.json` tracks bundled revisions and removals. Updates replace only unedited
+bundled task files. Editing any task field preserves the whole file, including fields
+that still contain older bundled values. New bundled tasks install once; unchanged
+startups do not rewrite task files or their extraction record. Keep the hidden record
+when backing up or moving tasks so manually deleted files stay deleted.
+See [Task library](Task_Library.md).
 
 Back up the root configuration, Docker configuration, `config/`, `registry/`,
-`themes/` and the extraction records before moving an installation. Root config
+`themes/`, `tasks/` (including its hidden records) and the extraction records before moving an installation. Root config
 can contain credentials and uses private file permissions. Do not publish it.
 Models and verification sidecars remain in the configured model directories.

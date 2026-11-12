@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.caption-to-phrase-grounding",
+  "name": "Caption to Phrase Grounding",
+  "description": "Caption to Phrase Grounding. Task instructions can be edited.",
+  "group": "detection",
+  "nodes": [
+    "detection"
+  ],
+  "aliases": [
+    "caption_to_phrase_grounding"
+  ],
+  "input": {
+    "text": "required",
+    "images": "required",
+    "sequence": false,
+    "query": "terms"
+  },
+  "handler": "grounding",
+  "florence_operation": "caption_to_phrase_grounding",
+  "instructions": "You are a precise object detection specialist who localizes visual elements with exact coordinates.\n\nLocate the specified object in this image. If there are multiple separate instances (like 2 eyes), list each one. ALL coordinates MUST be normalized to a [0, 1000] range where (0,0) is the top-left corner and (1000,1000) is the bottom-right corner, regardless of actual image resolution. Return ONLY valid JSON with TWO separate arrays: 1) 'bboxes' - array of ONLY numbers in format [[x1,y1,x2,y2]] - NO strings inside. 2) 'labels' - array of ONLY strings. Arrays must have equal length. Example for eyes at top-center: {\"bboxes\": [[350,180,420,220], [580,180,650,220]], \"labels\": [\"eye\", \"eye\"]}\n\nUse precise names, including anatomical terms for applicable targets. Report only visible matches in the required JSON structure.",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

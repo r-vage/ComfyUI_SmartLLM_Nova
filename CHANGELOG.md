@@ -1,3 +1,78 @@
+## 2026-11-12
+
+### Version: 1.1.16
+
+- **Feat**
+  - Add Frames/Grid mode with labelled contact sheets, readable tile limits and overlapping windows. Analyze each window independently, then combine the observed evidence into one result in the selected task's format while reusing the loaded model.
+  - Accept native VIDEO on the image / video socket with sampling and adjustable cut detection. Preserve IMAGE connections and passthrough; stream video frames without requiring a conversion node or retaining a full-video IMAGE output. Saved image modes do not restrict text-only requests.
+  - Add a themed, resizable Tasks panel with selection on the left and editing on the right. Group available tasks by purpose in editable, collapsible categories and show their image requirements. Keep selected loader tasks first in execution order and visible during search, retain unsaved drafts, and show a compact summary on the node. Detection keeps one task with comma-separated grounding targets.
+  - Add editable task files with stable IDs, custom tasks, duplication, removal and restore. Preserve edits and deletions across updates, isolate malformed task files, and validate limits before saving. Keep Florence operation codes and checkpoint compatibility protected.
+  - Preview effective task instructions and provide an editable Direct Chat system prompt beside user guidance. Validate compatible task chains and reuse the loaded model across their steps.
+  - Let Short Story and song tasks use images or ordered sequences as visual support. Gather Grid/VIDEO observations before composing one complete story or song, preserving music JSON formats and existing lyrics during conversion.
+- **Fix**
+  - Preserve the whole task file after any user edit instead of updating individual stock fields. Keep deleted tasks removed, install new bundled tasks once, and avoid rewriting unchanged extraction records on startup.
+  - Remove repeated tags from Tags and Natural Language to Tags output in code, including chained tasks and Florence tagging. Keep first-occurrence order and spelling, match case/space/underscore variants, and preserve distinct weighted tags.
+  - Make H3, Wan and LTX instructions distinguish reference images from Together/Grid and VIDEO scene samples. Retain user guidance, visible poses, framing and camera changes through analysis and synthesis; keep H3's three-field contract and LTX's Style paragraph.
+  - Ignore connected images, video and disk frames for text-only models or text-only tasks before media preparation. Preserve IMAGE passthrough and run once per text request regardless of image count or Together/Grid settings; image-required tasks still need a vision model.
+  - Keep visual-window metadata separate from song-source parsing and allow lyric sheets to feed Short Story consistently in the task picker and execution.
+  - Clarify requested song section lengths and arrangement consistency, and normalize generated Structure labels before chained lyric conversion without changing sung words.
+  - Keep system instructions separate from user guidance in Qwen Transformers and Detection while preserving backend-specific message formats and connected prompt overrides.
+  - Parse Florence object-detection results with the correct spatial operation instead of treating them as text.
+  - Exclude conditioning padding from native Gemma 4 12B chat generation with LTX encoders, restoring tokenizer settings after each request.
+  - Prevent Registry Manager downloads, file verification and Docker image pulls from failing at the frontend's short fetch timeout while the server is still working.
+- **Refactor**
+  - Replace title-based task routing and four monolithic prompt/training files with one instruction set per task and a consistent catalog snapshot per execution. Start from the bundled task library, ignore old prompt/training/profile files and stop importing custom entries as drafts. Preserve edits made directly to task files. Remove Training/NSFW switches, profile overrides and example conversations; accept older saved switch values.
+  - Preserve source-grounded terminology, task detail levels, templates and structured output formats. Apply templates once across backends and remove separate scene-description word and sentence caps.
+  - Consolidate English Wan duration variants into Wan 2.2 and leave video timing to downstream generation settings. Remove forced seconds and timestamps from Wan, LTX and H3 instructions; preserve old selections, customized presets and deletions.
+- **Docs**
+  - Explain grid/video inputs, visual story/song support, task editing, bundled defaults, ignored legacy files, Direct Chat instructions, duration ownership and backend prompt handling.
+- **Changed files**
+  - .defaults/tasks/*.json.example
+  - .defaults/config.json.example
+  - .defaults/config/llm_few_shot_training.json.example
+  - .defaults/config/llm_few_shot_training_nsfw.json.example
+  - .defaults/config/system_prompts.json.example
+  - .defaults/config/system_prompts_nsfw.json.example
+  - README.md
+  - Readme/Nova_Panels.md
+  - Readme/Smart_Detection_Guide.md
+  - Readme/Smart_LM_Loader_Guide.md
+  - Readme/Task_Library.md
+  - Readme/User_Data.md
+  - core/migration.py
+  - core/sml/backend_comfyui.py
+  - core/sml/backend_transformers.py
+  - core/sml/config_templates.py
+  - core/sml/creative_inputs.py
+  - core/sml/grounding_queries.py
+  - core/sml/image_inputs.py
+  - core/sml/media_inputs.py
+  - core/sml/native_thinking.py
+  - core/sml/panel_configuration.py
+  - core/sml/prompt_flow.py
+  - core/sml/scene_motion.py
+  - core/sml/sequence_analysis.py
+  - core/sml/server_endpoints.py
+  - core/sml/song.py
+  - core/sml/tag_output.py
+  - core/sml/task_api.py
+  - core/sml/task_library.py
+  - core/sml/task_migration.py
+  - core/sml/task_operations.py
+  - core/sml/tasks.py
+  - js/nova-native-settings.js
+  - js/nova-panel-form.js
+  - js/nova-panel-state.js
+  - js/nova-panel.css
+  - js/nova-panel.js
+  - js/nova-task-library.js
+  - js/smartllm-metadata.js
+  - js/smartllm-registry-manager.js
+  - py/RvConfig_SmartSettings.py
+  - py/RvLoader_SmartDetection.py
+  - py/RvLoader_SmartLMLoader.py
+  - pyproject.toml
+
 ## 2026-11-10
 
 ### Version: 1.1.15

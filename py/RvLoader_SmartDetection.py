@@ -81,14 +81,9 @@ _LOG_PREFIX = "SmartLLM Detection"
 # ============================================================================
 
 # Tasks that require user_input
-_REQUIRES_USER_INPUT = {
-    "Caption to Phrase Grounding",
-    "Referring Expression Segmentation",
-    "DocVQA",
-}
-
-# Text-mode tasks (return text, no bboxes)
-_TEXT_MODE_TASKS = {"OCR", "DocVQA"}
+from ..core.sml.prompt_flow import user_message
+from ..core.sml.task_library import get_task, handler, task_scope, validate_plan
+from ..core.sml.task_operations import florence_operation
 
 
 class _Wrapper:
@@ -208,7 +203,7 @@ def _generate_florence_detection(
         do_sample=do_sample,
         seed=seed,
         repetition_penalty=repetition_penalty,
-        text_input=user_input or "",
+        text_input=user_message(task_obj, user_input),
         convert_to_bboxes=convert_to_bboxes,
         detection_filter_threshold=detection_filter_threshold,
         nms_iou_threshold=nms_iou_threshold,
@@ -235,9 +230,7 @@ def _generate_qwen_detection(
     # Generate structured detection with Qwen VL or native vision encoders.
     # Routes to the existing model backend and shares coordinate parsing.
     system_prompt = get_system_prompt(task_name)
-    prompt = system_prompt or "Detect all objects in this image."
-    if user_input and user_input.strip():
-        prompt += f"\n\n{user_input.strip()}"
+    prompt = user_message(get_task(task_name), user_input)
 
     image_paths = None
     original_size = resized_size = None
@@ -247,7 +240,7 @@ def _generate_qwen_detection(
             from ..core.sml.backend_comfyui import generate_comfyui
 
             result, _ = generate_comfyui(
-                instance, prompt=(user_input or "").strip() or "Detect all objects in this image.",
+                instance, prompt=prompt,
                 task_name=task_name, llm_mode=None, system_prompt=system_prompt,
                 use_few_shot=False, image=image, max_tokens=max_tokens,
                 do_sample=do_sample, temperature=temperature, top_p=top_p,
@@ -268,6 +261,8 @@ def _generate_qwen_detection(
             kw = dict(
                 smart_lm_instance=instance,
                 prompt=prompt,
+                system_prompt=system_prompt,
+                use_few_shot=False,
                 image_paths=image_paths,
                 max_tokens=max_tokens,
                 temperature=temperature,
@@ -289,6 +284,8 @@ def _generate_qwen_detection(
             kw = dict(
                 smart_lm_instance=instance,
                 prompt=prompt,
+                system_prompt=system_prompt,
+                use_few_shot=False,
                 image_paths=image_paths,
                 max_tokens=max_tokens,
                 temperature=temperature,
@@ -310,6 +307,8 @@ def _generate_qwen_detection(
             result, _ = generate_ollama(
                 smart_lm_instance=instance,
                 prompt=prompt,
+                system_prompt=system_prompt,
+                use_few_shot=False,
                 image_paths=image_paths,
                 max_tokens=max_tokens,
                 temperature=temperature,
@@ -330,6 +329,8 @@ def _generate_qwen_detection(
             result, _ = generate_llamacpp(
                 smart_lm_instance=instance,
                 prompt=prompt,
+                system_prompt=system_prompt,
+                use_few_shot=False,
                 image_paths=image_paths,
                 max_tokens=max_tokens,
                 temperature=temperature,
@@ -348,6 +349,8 @@ def _generate_qwen_detection(
                 model_type="vision",
                 image=image,
                 prompt=prompt,
+                system_prompt=system_prompt,
+                use_few_shot=False,
                 max_tokens=max_tokens,
                 temperature=temperature,
                 top_p=top_p,
@@ -366,6 +369,8 @@ def _generate_qwen_detection(
                 model_family="QwenVL",
                 image=image,
                 prompt=prompt,
+                system_prompt=system_prompt,
+                use_few_shot=False,
                 max_tokens=max_tokens,
                 temperature=temperature,
                 top_p=top_p,
@@ -389,7 +394,7 @@ def _generate_qwen_detection(
     img_size = original_size or (pil_img.width, pil_img.height)
     data, cleaned = parse_qwen_detection_json(
         result, image_size=img_size,
-        fallback_label=user_input if task_name == "Caption to Phrase Grounding" else "",
+        fallback_label=user_input if handler(task_name) == 'grounding' else "",
     )
     if not data:
         data = {}
@@ -897,6 +902,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
 
     @classmethod
     @with_execution_cleanup(_LOG_PREFIX)
+    @task_scope()
     def _execute_engine(
         cls,
         # Mode options
@@ -984,6 +990,10 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
         if entry is None:
             raise ValueError(f"Model '{model_name}' not found in registry")
 
+        selected_tasks = validate_plan([task], entry, 'detection')
+        task_definition = selected_tasks[0] if selected_tasks else None
+        if task_definition is not None:
+            task = task_definition.id
         backend = entry["backend"]
         repo_id = entry.get("repo_id", "")
         name = entry["name"]
@@ -992,7 +1002,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
         if backend == "comfyui":
             if not entry.get("has_vision", False):
                 raise ValueError("Smart Detection requires an encoder with vision weights.")
-            if task not in {"Caption to Phrase Grounding", "Region Caption"}:
+            if handler(task) not in {'grounding', 'region_caption'}:
                 raise ValueError("Native vision encoders support Caption to Phrase Grounding or Region Caption for detection.")
 
         log.msg(
@@ -1024,7 +1034,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
         # ── 3. Pre-validate ─────────────────────────────────────
         if (
             family_str != "YOLO"
-            and task in _REQUIRES_USER_INPUT
+            and task_definition is not None and task_definition.definition['input']['text'] == 'required'
             and (not user_input or not user_input.strip())
         ):
             raise ValueError(
@@ -1274,7 +1284,7 @@ class RvLoader_Detection(SmartLLMPanel, io.ComfyNode):
             empty_segs = ((image_h, image_w), [])
 
             # Florence Text-Mode fast-path
-            if family_str == "Florence" and task in _TEXT_MODE_TASKS:
+            if family_str == "Florence" and not florence_operation(task_definition.florence_id).spatial:
                 result_text, _ = _generate_florence_detection(
                     instance,
                     single_image,

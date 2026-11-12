@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.docvqa",
+  "name": "DocVQA",
+  "description": "DocVQA. Uses a protected Florence operation.",
+  "group": "detection",
+  "nodes": [
+    "detection"
+  ],
+  "aliases": [
+    "docvqa"
+  ],
+  "input": {
+    "text": "required",
+    "images": "required",
+    "sequence": false,
+    "query": "single"
+  },
+  "handler": "florence",
+  "florence_operation": "docvqa",
+  "instructions": "",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

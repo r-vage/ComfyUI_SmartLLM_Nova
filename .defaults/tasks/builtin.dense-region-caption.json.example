@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.dense-region-caption",
+  "name": "Dense Region Caption",
+  "description": "Dense Region Caption. Uses a protected Florence operation.",
+  "group": "detection",
+  "nodes": [
+    "detection"
+  ],
+  "aliases": [
+    "dense_region_caption"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": false,
+    "query": "single"
+  },
+  "handler": "florence",
+  "florence_operation": "dense_region_caption",
+  "instructions": "",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

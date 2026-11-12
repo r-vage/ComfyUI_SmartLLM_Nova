@@ -16,14 +16,17 @@ from .vlm_detection import get_max_pixels_for_model_type
 
 IMAGE_HANDLING = ("individual_images", "frame_sequence", "legacy")
 sequence_request = ContextVar("smartllm_sequence_request", default=False)
+sequence_frame_count = ContextVar("smartllm_sequence_frame_count", default=None)
 
 
 @contextmanager
-def sequence_context(enabled):
+def sequence_context(enabled, frame_count=None):
     token = sequence_request.set(enabled)
+    count_token = sequence_frame_count.set(frame_count)
     try:
         yield
     finally:
+        sequence_frame_count.reset(count_token)
         sequence_request.reset(token)
 
 
@@ -31,6 +34,15 @@ def sampled_positions(count, every_nth=1):
     if every_nth < 1:
         raise ValueError("Every Nth frame must be positive")
     return tuple(sorted({*range(0, count, every_nth), count - 1})) if count else ()
+
+
+def passthrough_images(value):
+    """Retain IMAGE batches without inspecting or decoding unused visual input."""
+    if isinstance(value, torch.Tensor):
+        return [value.unsqueeze(0) if value.ndim == 3 else value]
+    if isinstance(value, (tuple, list)):
+        return [batch for item in value for batch in passthrough_images(item)]
+    return []  # VIDEO and disk frames do not produce an IMAGE passthrough.
 
 
 def group_images(images, handling, task):

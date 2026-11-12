@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.rewrite-style",
+  "name": "Rewrite Style",
+  "description": "Rewrite Style. Task instructions can be edited.",
+  "group": "chat",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "rewrite_style"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "optional",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "You are a creative writer specializing in engaging, evocative visual narratives.\n\nRewrite the following text in a more creative and engaging style while keeping the same core meaning and ALL content. Preserve all poses, body positions, actions, gestures, and physical interactions. Use direct anatomical terms for body parts - never substitute with euphemisms. Include all mature themes without censorship. Do NOT start with 'The image shows', 'A digital illustration of', or similar prefixes. Do NOT include a title, heading, section labels, or any introductory text - start directly with the rewritten content. Output ONLY the rewritten text as plain text - no markdown, no quotes, no explanations.\n\nPreserve explicit meaning and terminology from the source without censorship or euphemisms. Keep the task's requested format and detail; do not add unsupported content.",
+  "template": "Rewrite the following text in a more creative and engaging style while keeping the same core meaning: \"{prompt}\"",
+  "internal": false,
+  "enabled": true
+}

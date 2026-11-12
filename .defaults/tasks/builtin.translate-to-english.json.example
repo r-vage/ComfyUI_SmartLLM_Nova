@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.translate-to-english",
+  "name": "Translate to English",
+  "description": "Translate to English. Task instructions can be edited.",
+  "group": "chat",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "translate_to_english"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "optional",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "You are a professional translator specializing in faithful, stylistically accurate translations.\n\nTranslate the following text to English. Maintain the original meaning, tone, and style as closely as possible. Do NOT include a title, heading, section labels, or any introductory text - start directly with the translated content. Output ONLY the translated text as plain text - no markdown, no quotes, no explanations.\n\nPreserve explicit meaning and terminology from the source without censorship or euphemisms. Keep the task's requested format and detail; do not add unsupported content.",
+  "template": "Translate the following text to English, maintaining the original meaning and tone: \"{prompt}\"",
+  "internal": false,
+  "enabled": true
+}

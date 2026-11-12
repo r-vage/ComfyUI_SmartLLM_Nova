@@ -22,12 +22,16 @@ function injectCSS() {
     document.head.appendChild(stylesheet);
 }
 
-async function request(path, body = null) {
-    const response = await api.fetchApi(path, body === null ? undefined : {
+async function request(path, body = null, { longRunning = false } = {}) {
+    const options = body === null ? {} : {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-    });
+    };
+    // Transfers and verification reply only after the server finishes. ComfyUI's
+    // normal response-header timeout would abandon a still-running operation.
+    if (longRunning) options.timeoutMs = null;
+    const response = await api.fetchApi(path, options);
     let payload;
     try { payload = await response.json(); } catch (_) { payload = {}; }
     if (!response.ok || payload?.success === false) {
@@ -488,7 +492,7 @@ class RegistryManager {
         const target = action === 'stop' ? 'container(s)' : 'image';
         const result = await this.action(`${verb} ${image.label} ${target}`, () => request(`/smartllm-nova/docker/images/${action}`, {
             ...payload,
-        }));
+        }, { longRunning: action === 'pull' }));
         if (result) await this.refreshDocker();
     }
 
@@ -724,13 +728,13 @@ class RegistryManager {
 
     async download() {
         if (!this.selected) return;
-        const result = await this.action('Downloading model', () => request('/smartllm-nova/model/download', { display_name: this.selected, quantization: this.selectedQuantization() }));
+        const result = await this.action('Downloading model', () => request('/smartllm-nova/model/download', { display_name: this.selected, quantization: this.selectedQuantization() }, { longRunning: true }));
         if (result) await this.refresh(this.selected);
     }
 
     async verify() {
         if (!this.selected) return;
-        await this.action('Verifying local model files', () => request('/smartllm-nova/model/verify', { display_name: this.selected, quantization: this.selectedQuantization() }));
+        await this.action('Verifying local model files', () => request('/smartllm-nova/model/verify', { display_name: this.selected, quantization: this.selectedQuantization() }, { longRunning: true }));
     }
 
     async deleteLocal() {

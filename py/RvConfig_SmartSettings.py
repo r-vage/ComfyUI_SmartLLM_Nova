@@ -34,7 +34,11 @@ class _NativeSettings(io.ComfyNode):
         )
 
     @classmethod
-    def validate_inputs(cls, quantization):
+    def validate_inputs(cls, quantization, task=None):
+        # Catalog IDs and saved name aliases can outlive the current combo list.
+        # The consuming loader/detector validates task existence and compatibility.
+        if task is not None and (not isinstance(task, str) or not task):
+            return "Task must be text."
         # Registry-specific GGUF choices extend the initial placeholder list.
         return True if quantization is None or isinstance(quantization, str) and quantization else "Quantization must be text."
 

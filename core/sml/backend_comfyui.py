@@ -170,6 +170,24 @@ def _finish_native_response(raw, *, thinking_prefilled, stop_sequences=None):
     return clean_model_output(raw)
 
 
+def _tokenize_for_generation(clip, prompt, architecture, options):
+    # LTX's Gemma 4 12B tokenizer pads conditioning to 1024 entries, and its
+    # wrapper drops our min_length keyword before calling SDTokenizer. Native
+    # generation does not use that padding's attention mask. Override the saved
+    # minimum only during tokenization, under the instance's generation lock.
+    wrapper = getattr(clip, "tokenizer", None)
+    name = getattr(wrapper, "clip", "")
+    tokenizer = getattr(wrapper, name, None) if isinstance(name, str) else None
+    minimum = getattr(tokenizer, "min_length", None)
+    if architecture != "GEMMA_4_12B" or not isinstance(minimum, int) or minimum <= 1:
+        return clip.tokenize(prompt, **options)
+    try:
+        tokenizer.min_length = 1
+        return clip.tokenize(prompt, **options)
+    finally:
+        tokenizer.min_length = minimum
+
+
 def generate_comfyui(
     instance: ComfyTextEncoder, *, prompt: str, task_name: str, llm_mode: str | None,
     system_prompt: str | None, use_few_shot: bool, image, max_tokens: int,
@@ -207,7 +225,7 @@ def generate_comfyui(
         clip = instance.clip
         if clip is None:
             raise RuntimeError("The native text encoder has been unloaded; run the node again.")
-        tokens = clip.tokenize(prompt, **options)
+        tokens = _tokenize_for_generation(clip, prompt, architecture, options)
         with gguf_generation_reserve(clip, tokens, max_tokens, architecture), description_thinking_budget(
             clip, architecture, task_name, max_tokens, prefilled=thinking_prefilled, enabled=enable_thinking,
         ) as budget_options:

@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.question-answering",
+  "name": "Question Answering",
+  "description": "Question Answering. Task instructions can be edited.",
+  "group": "chat",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "question_answering"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "optional",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "You are a precise visual analyst. Answer the user's question about this image accurately and concisely based on what you can observe.\n\nPreserve explicit meaning and terminology from the source without censorship or euphemisms. Keep the task's requested format and detail; do not add unsupported content.",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

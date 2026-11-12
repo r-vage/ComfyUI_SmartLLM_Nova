@@ -18,6 +18,7 @@ _MANIFEST_NAME = ".manifest.json"
 _DEFAULT_VALUE_UPGRADES = {
     Path("config/system_prompts.json"): {
         "Scene Motion Analysis": (
+            "b32afaeb93c9389d1d095a738c31ca425f4fd87f6dc802984cdbf8d3e8c6d836",
             "2d19990115e48056b4c03bcad313bf29905a1a081bebdeaa0316047d2b73e724",
             "7c79a5b1737f0da4534f7e73ad0393825db7527045f39e911cc02cd4d5080197",
             "37c6e3222199c1bfdabd741cbe0d20c6d00bf052eba5850c20823542ee753e7c",
@@ -28,6 +29,7 @@ _DEFAULT_VALUE_UPGRADES = {
             "e3c9d8f7719220558da3888b3c3cb0af1c18e18f1a058b148bc3885233f46d78",
         ),
         "Scene Description (T2V)": (
+            "3f0ef47dc8318ece3091daa6c1fcc42d467fb0e3c8b4290a98ae680a4a705628",
             "e5230e5988a684dc9b82137d241b932d0d723ac8b9126d8f32dafb6173f71f4e",
         ),
         "Simple Description": (
@@ -35,12 +37,14 @@ _DEFAULT_VALUE_UPGRADES = {
             "6c9dbece46a6351d5ae1b5f1b0b425fe00be57faf2ed2b208c6a9b729b92c348",
             "b8743371674846abe85fcfa070a9c2ab37e9eedd52a09e46dff6f8f09e14f8f8",
             "aeefd33e7117ec9e48b994728a1929351130343335a1f2c76739130120982206",
+            "a57e06975af4c226f3c40643b2a09f14f6a354e3284a25ce8c9b43e7bf24d91e",
         ),
         "Detailed Description": (
             "82a43e6b8c0d2e81d249b8109c1d1f9a462d57e5ba474efe2e269600f0c9ae4c",
             "539cd7b53e972bb41bdc3af3a4b4d3327a31742a5e9af93328620702e4f94f60",
             "bfa6653d8db7a7a6740adef5cb676fe6608ebef31150a29646a4beb706aea326",
             "a081bc8062e696681d78d9ff99b939b1eb81d768285b0cf530c89e0296c011ac",
+            "1b8cdb0f9aa53b52772e02d60738b3d7d805080e34251ce5ded02456ba067b67",
         ),
         "Ultra Detailed Description": (
             "707b8e6f4a12797c35a6a92eae6caafa9ad20c21904e9af605a611553622efc3",
@@ -48,6 +52,7 @@ _DEFAULT_VALUE_UPGRADES = {
             "ac937870c4ce4a36366800ec04aa83f0f837c2a3fab4fec9123138a894409a3c",
             "71a5334a06d9201ef92defdb94aa58d57bea81169c4a7385753087cce05b898e",
             "fb439f50c83c5210896e0b146b37f8d3de041cded00c4605570f31aa224e56fa",
+            "eaab6ee2380405f0173d38b92904d4103ad7378c61ec4e372b1763c44abdfae3",
         ),
         "MiniMax Music 3": (
             "6db71d6f7fd9890a6f75127e1e290cbe72988d5b6d39d99812ee4a3cd738e739",
@@ -106,18 +111,23 @@ _DEFAULT_VALUE_UPGRADES = {
         "LTX 2.3 I2V": "dbf829e66bc2232fb5dd542c069f804b81641e2add4cc3233c9d8def4b705eeb",
         "Cinematic Description": (
             "9c987ea8d1c83535f515ed125767455d84839235b58acaf934c39a02ec5376b8",
+            "e2499f6a8d2743ba752aa4a9c1778c9364d0b18e67d4eceae911c10073e5e04c",
         ),
         "Image Analysis": (
             "74ab8e9bb7111cf6622365620153a31315c08c8517f1a6689e9ac2b0723e92fd",
+            "0896e7b019d09e35e9d5c2111990c2ac51d3ac5c39e7e1300d924ddda677df16",
         ),
         "Detailed Analysis": (
             "95ae78bea8fb2f0dad98ea3383d90472c6f9bf25ebb38f2b781947bc8be549a2",
+            "0079964017b37efc2bc62e322896b73bba22ba949f00e7463b4f88917136efbf",
         ),
         "Tags": (
             "77cb4e2939eba82aeaa6b66adb39b432d25534eb1827cd45446482334a174e35",
+            "87ea5fdce6e388eccdd8ca2e709d190b2e1255e4b5deb7fade3a37fa540cc0a4",
         ),
         "Video Summary": (
             "43fc1d75e8213d1ca9f8ec2085eaf833267105a933c31ef1a57ba0cec18dfb68",
+            "a68b3eaa5e987e93906d5a932dbbf78fe256db4d09af1ddec81c006662ec769d",
         ),
         "Expand Text": (
             "6199c90b029ca5729b061301d273c0c9d7dafbcecee3452477e46f5fffe3a913",
@@ -164,6 +174,7 @@ _DEFAULT_VALUE_UPGRADES = {
             "46635e63f79cbb235782b7def702f39c978d9d627ee348f5e22b81f89b744880",
         ),
         "Scene Motion Analysis": (
+            "b32afaeb93c9389d1d095a738c31ca425f4fd87f6dc802984cdbf8d3e8c6d836",
             "2d19990115e48056b4c03bcad313bf29905a1a081bebdeaa0316047d2b73e724",
             "7c79a5b1737f0da4534f7e73ad0393825db7527045f39e911cc02cd4d5080197",
             "37c6e3222199c1bfdabd741cbe0d20c6d00bf052eba5850c20823542ee753e7c",
@@ -174,17 +185,36 @@ _DEFAULT_VALUE_UPGRADES = {
             "e3c9d8f7719220558da3888b3c3cb0af1c18e18f1a058b148bc3885233f46d78",
         ),
         "Scene Description (T2V)": (
+            "3f0ef47dc8318ece3091daa6c1fcc42d467fb0e3c8b4290a98ae680a4a705628",
             "e5230e5988a684dc9b82137d241b932d0d723ac8b9126d8f32dafb6173f71f4e",
         ),
         "Simple Description": (
             "b8743371674846abe85fcfa070a9c2ab37e9eedd52a09e46dff6f8f09e14f8f8",
+            "7767d8ad1d480b51c38ef65dedf47219535f0737460ca2a7c058828a56b0ac5d",
         ),
         "Detailed Description": (
             "bfa6653d8db7a7a6740adef5cb676fe6608ebef31150a29646a4beb706aea326",
+            "18d6fe150896d799ae510626633468706477a2997fff7167bbf4a1e167e73d58",
         ),
         "Ultra Detailed Description": (
             "ac937870c4ce4a36366800ec04aa83f0f837c2a3fab4fec9123138a894409a3c",
             "b8d052ea0e0fcfec00f4114d166bc46e38c94c4482125255438c8007291fba2a",
+            "ecd4310cd03c67ef7255cb6e4d16691389358e3278e3b0e1431513cab8227b95",
+        ),
+        "Cinematic Description": (
+            "9c987ea8d1c83535f515ed125767455d84839235b58acaf934c39a02ec5376b8",
+        ),
+        "Detailed Analysis": (
+            "95ae78bea8fb2f0dad98ea3383d90472c6f9bf25ebb38f2b781947bc8be549a2",
+        ),
+        "Image Analysis": (
+            "74ab8e9bb7111cf6622365620153a31315c08c8517f1a6689e9ac2b0723e92fd",
+        ),
+        "Tags": (
+            "77cb4e2939eba82aeaa6b66adb39b432d25534eb1827cd45446482334a174e35",
+        ),
+        "Video Summary": (
+            "43fc1d75e8213d1ca9f8ec2085eaf833267105a933c31ef1a57ba0cec18dfb68",
         ),
     },
     Path("config/llm_few_shot_training.json"): {
@@ -192,17 +222,20 @@ _DEFAULT_VALUE_UPGRADES = {
             "f38b74170016abe20aa34caa041f647f6519f3725b6d63bbc1fd0c1c9279b55b",
             "c9117e9d305351199e3bb2513fae0cbd05cb37beacbda21fcbea41da3c6b7249",
             "f4172d60a24d623393720fa758a95bef9d0afa4c19066f874e1183dfd61e37a1",
+            "735acce308ffb51f3448bdbf718515c2e4b3a807fe7aab29aef4d90e514e1323",
         ),
         "detailed_description": (
             "8d5d08dd2a4a59dde5d9205fb9195e4f37714989078fa486b5b7d09c7a0ba541",
             "33c948b5a3e059dcc48271921362a8bca3d48cb93cb71032cb5c792275ec4e4e",
             "7c3aa418fd5d0ed58c0a6f128cca406082e779762521eaa60daa478b4daa587f",
+            "8de0c17c689c1b347d6449675fb31a6278c923304f794a209128129467feb60e",
         ),
         "ultra_detailed_description": (
             "fb60bbcb8d2126423a055fa1addf16204775f4948d0a28a0c98fd1066e2bd3c7",
             "0ba3a53f902a95506c4a9350945e4523efb2072e331ad2d4f89762e169b85fea",
             "202c487116e05b4e6cef4d6e4293630c558ba3edb4cb80ad1b864e2d566933f5",
             "79430a0b0be51b537aadaef371e87bb25573e90389808b2a6f3dbe74754ca79b",
+            "7c0b8199c990ed56fb161621ea302ba37223a5815ed94d70fa0bc1ab35b5f094",
         ),
         "minimax_music_3": (
             "eb4dd0d3053de1b777d09b24fea6ef467976fbe0a3c0c5215e94705c4364cc16",
@@ -231,6 +264,21 @@ _DEFAULT_VALUE_UPGRADES = {
         "wan_2.2_scene_20s": "cfde6cefcb4e1e1af9c06004dfe5d877e75b41dde6bf8f63d395bd5db666d8c5",
         "wan_2.2_timeline_20s": "3cf9e9399d9f94bbcfe34cb8d85ddc12dc0ea931c98f5d75a1f6ae918713e53b",
         "ltx_2.3_i2v": "ddddcb90ebc4292ae937be87f8fe1d542e6ab55416fc777a56dd44208ea4a397",
+        "cinematic_description": (
+            "26e3bf0c6819d9744f105bd90e3b2aa148af138989dabb8c67162e65f5c0b77b",
+        ),
+        "detailed_analysis": (
+            "615bdc55896d10d78d51a9a67f19609f8eeef7de68b6e1736d92a72fdc7c5f27",
+        ),
+        "image_analysis": (
+            "6faf5f631e7e724e40299e9278775e7ab6588404cf00dc65976a4ff79a73fc16",
+        ),
+        "tags": (
+            "e7d2140632126404200dadd70d196c2bd3af43388ac4ed4489b32b180a54476c",
+        ),
+        "video_summary": (
+            "16987a3d7ebe8bdf85b5f56c834947c28e560ee16026651a37929ec55af5f8c8",
+        ),
     },
     Path("config/llm_few_shot_training_nsfw.json"): {
         "minimax_h3_t2va_timeline": (
@@ -241,12 +289,14 @@ _DEFAULT_VALUE_UPGRADES = {
             "e01a31c550c8037295eefa485c80ad28beaea429a352d5ee801d09961828a312",
             "1475753780fd1b58be1730186fa5372fdc128f29242faa8cdc9f01cc002480b2",
             "e7fde3e7566234c3ffa5bf16893548f673ce16399ea5445dea3264318423bbb2",
+            "2e7c6e510b424ce00bad2dff31d4a3057c48d2505ba01b7444c78d5c3e327190",
         ),
         "detailed_description": (
             "473142323f9a62e263cd2beffad5d6030bfb65f1fcfce95ad643df2e3da82f9a",
             "b2f5a72fa125d6c305b8190e88af80ef6278369fde41080b31c4c69f184e3648",
             "88b3739c3171319ff715a648bcbf039b421db1a05ce8dc70a3737a76572f6b73",
             "2ba8a18b1bb535ea244de4795af7b2e813002dbbd7c786e33b385e8eb31107f9",
+            "30fe8a82d93130adb79be0069bfab89523339d4bea985d00e2bc676eb48e0644",
         ),
         "ultra_detailed_description": (
             "99438a74d7201070b5fea1a70c1294071864751b77664c8fb77c56d3014c5b8b",
@@ -254,6 +304,7 @@ _DEFAULT_VALUE_UPGRADES = {
             "6142924736694c7a4b93f7d13a5a9254c147414c5302a908ff7af65d5876cffd",
             "a7ae88ba1882da33507da16f01fb8cbeff21cb0310ed9dfa9f1413d204c92e21",
             "ba335eab8104debd7727570f1e716b2577088f925d8cc8140573d1b47b74b565",
+            "6bb0aa21d2cacc461d1a19151e22b4b5edcc3de7ede68a9728b1db7ffbc394f3",
         ),
         "minimax_music_3": (
             "eb4dd0d3053de1b777d09b24fea6ef467976fbe0a3c0c5215e94705c4364cc16",
@@ -282,6 +333,21 @@ _DEFAULT_VALUE_UPGRADES = {
         "wan_2.2_scene_20s": "cfde6cefcb4e1e1af9c06004dfe5d877e75b41dde6bf8f63d395bd5db666d8c5",
         "wan_2.2_timeline_20s": "3cf9e9399d9f94bbcfe34cb8d85ddc12dc0ea931c98f5d75a1f6ae918713e53b",
         "ltx_2.3_i2v": "54d0a9b12e92b6eace281b066c6758d8ddc89fdb54479a215d5fa075c9e4dbbb",
+        "cinematic_description": (
+            "1a5a061459aec23dd4543dcef951136dd52f3955684206254fa8d70781b930c2",
+        ),
+        "detailed_analysis": (
+            "350362fb678df7c4865e22faa1242cd81e28e0a94983b96c8e5a120af6590062",
+        ),
+        "image_analysis": (
+            "5509d3c7bc1d7511f36cb4ac74f814518ae1b90800de4282ebfdbdfbf1286e2c",
+        ),
+        "tags": (
+            "b74f0e432941c58bcb78cd286e637b5a90d964d0d72f82cbcd12e0f4cd14c7f5",
+        ),
+        "video_summary": (
+            "a7194125b9c8c1a2f3a4563d1ab8ce8bd764724edc999ed372bad71417fa6cac",
+        ),
     },
 }
 
@@ -488,6 +554,10 @@ def _load_manifest(defaults: Path) -> dict[str, Any]:
 
 
 def materialize_defaults(repo_root: Path) -> None:
+    from .sml.task_migration import LEGACY_FILES, materialize_tasks
+
+    # Task defaults own their extraction and edits; retired prompt files are ignored.
+    materialize_tasks(repo_root)
     extract_theme_defaults(repo_root)
     defaults = repo_root / ".defaults"
     manifest_path = defaults / _MANIFEST_NAME
@@ -503,6 +573,13 @@ def materialize_defaults(repo_root: Path) -> None:
         target = repo_root / relative
         example_hash = _file_hash(example)
         previous_hash = manifest.get(key)
+
+        if relative.parts[0] == 'tasks' or (relative.parent == Path('config')
+                and relative.name in (*LEGACY_FILES, 'task_profiles.json') and (defaults / 'tasks').is_dir()):
+            if previous_hash != example_hash:
+                manifest[key] = example_hash
+                changed = True
+            continue
 
         if relative.parts[0] == "themes":
             # Theme updates never modify an extracted user file or restore one

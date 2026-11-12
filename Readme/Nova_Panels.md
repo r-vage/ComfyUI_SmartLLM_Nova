@@ -26,7 +26,7 @@ prompt-only IO helpers accompany these panels. Nova does not alias the original 
 
 Connected non-None override values take priority over the corresponding local
 setting. An empty prompt is a valid override. Smart LM Loader preserves prompt
-lists and image batches, multi-task chaining, task templates, per-node Standard/NSFW profiles and optional examples,
+lists and image batches, multi-task chaining, task instructions and templates,
 WD14, quantization, attention, cleanup and model retention. Smart Detection
 keeps its IMAGE/MASK/SEGS/JSON list outputs. No model acquisition, trust, device,
 or backend policies are replaced by the panels.
@@ -52,8 +52,8 @@ for tasks such as refinement or tag conversion. Later multi-task stages consume
 the previous text result. See the [loader guide](Smart_LM_Loader_Guide.md#image-sequences-and-scene-motion)
 for scene tasks, bounded windows and model limits.
 
-In the mode bar, **Standard/NSFW** selects system prompts independently of
-**Training**; Training adds contextual examples without changing weights.
+Task files contain one instruction set. The retired Training/NSFW switches are ignored
+in older saved configurations; no example conversations are added.
 **Thinking** defaults off and appears for supported backend paths. The model's
 template must support it, and reasoning shares **Max tokens** with the answer.
 **Scene JSON** defaults off. Enable it to send ordinary image-task descriptions
@@ -154,8 +154,10 @@ API clients control their own increment/decrement progression between requests.
 ## Models and tasks
 
 The mode bar sits at the top. Below it, the collapsible **Model** section contains
-the model selector, quantization when supported, task selection (including chained
-tasks), then Registry, Delete and Refresh controls. WD14 and YOLO omit tasks.
+the model selector, quantization when supported, and Registry, Delete and Refresh
+controls. The compact **Tasks** row below Model opens a resizable panel with task
+selection on the left and editing fields on the right. Selected loader tasks stay
+at the top in execution order. WD14 and YOLO omit tasks.
 
 Click Model to search a freshly fetched registry list. Refresh reloads the
 selected model's metadata; Registry opens Nova's own manager. A deliberate model

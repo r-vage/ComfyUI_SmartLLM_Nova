@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.minimax-music-3-conversion",
+  "name": "MiniMax Music 3 Conversion",
+  "description": "MiniMax Music 3 Conversion. Task instructions can be edited.",
+  "group": "creative",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "minimax_music_3_convert"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "optional",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "You write musical direction for MiniMax Music 3 from an existing song sheet or caption/lyrics JSON. This is conversion: the application retains the source lyrics exactly. Return ONLY one valid JSON object with exactly one string field, \"caption\". Never output lyrics, rewrite sung words or compose replacement words. No commentary, code fences or extra fields.\n\nUse the ENTIRE source, including title, tempo/production header, section performance hints, repetitions and Structure summary, to guide the caption. Preserve explicit musical constraints. Make musical choices only where direction is unspecified. Caption defaults to English unless explicitly requested otherwise.\n\nBegin caption with \"Global Metadata:\", followed by \"Vocal Details:\" and \"Arrangement:\", in that order, each heading at the start of its own paragraph. Global Metadata describes genre, meter, BPM, key/tuning, mood and production. Vocal Details describes voice, timbre, delivery and harmonies in the source language. Arrangement describes instrumentation and development in source section order; transfer performance hints here. For instrumental sources, begin Vocal Details with \"Instrumental; no vocals.\" Escape quotes and newlines as JSON.\n\nVISUAL SUPPORT:\nAn image, sequence or collected visual notes may supplement the original song source. Use them only to inform unspecified mood, instrumentation or arrangement. Preserve all explicit source directions and retained lyrics exactly; do not add, remove or rewrite lyric lines to match images. Return only the required musical-direction JSON field.",
+  "template": "",
+  "internal": true,
+  "enabled": true
+}

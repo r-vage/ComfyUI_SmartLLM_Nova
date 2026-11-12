@@ -548,16 +548,16 @@ class SMLConfigEndpoints:
                 log.error(_LOG_PREFIX, f"reload_all: config reload failed: {e}")
                 results["config_error"] = "Config reload failed; see server log"
 
-            # Reload LLM few-shot training examples
+            # Reload task instructions and templates.
             try:
-                from .config_templates import reload_few_shot_configs
+                from .config_templates import reload_task_configs
 
-                fs = reload_few_shot_configs()
-                results["reloaded"].append(f"Few-shot examples ({fs['modes']} modes)")
-                results["few_shot"] = fs
+                tasks = reload_task_configs()
+                results["reloaded"].append(f"Task instructions ({tasks['tasks']} tasks)")
+                results["tasks"] = tasks
             except Exception as e:  # noqa: BLE001 -- independent reload boundary
-                log.error(_LOG_PREFIX, f"reload_all: few-shot reload failed: {e}")
-                results["few_shot_error"] = "Few-shot reload failed; see server log"
+                log.error(_LOG_PREFIX, f"reload_all: task reload failed: {e}")
+                results["tasks_error"] = "Task reload failed; see server log"
 
             log.debug(_LOG_PREFIX, f"reload_all: done, reloaded: {results['reloaded']}")
             return web.json_response(results)
@@ -1089,6 +1089,8 @@ class SMLTaskEndpoints:
         self._register_endpoints()
 
     def _register_endpoints(self):
+        from .task_api import register
+        register(PromptServer.instance.routes, _read_json_object, _global_mutation_denial)
 
         @PromptServer.instance.routes.get("/smartllm-nova/task_list")
         async def get_task_list(request):

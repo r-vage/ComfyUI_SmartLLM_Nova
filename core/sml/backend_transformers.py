@@ -757,9 +757,12 @@ def _generate_vlm(
             messages.append({"role": "user", "content": user_content})
 
         elif model_type == ModelType.QWENVL:
-            # Qwen: NO system role (FP8 models don't handle it well)
-            # All content (image/video + combined system+user text) goes in user role
+            # Qwen's multimodal template supports system messages independently
+            # of weight precision. Keep task instructions ahead of examples and
+            # user guidance, including when either contains blank paragraphs.
             messages = []
+            if system_prompt:
+                messages.append({'role': 'system', 'content': system_prompt})
 
             # Inject text-only few-shot examples as chat messages before image
             if image_pil and vision_task and use_few_shot:
@@ -780,13 +783,7 @@ def _generate_vlm(
             elif frames and len(frames) > 1:
                 user_content.append({"type": "video", "video": frames})
 
-            prompt_text = system_prompt or ""
-            if user_message:
-                prompt_text = (
-                    f"{prompt_text}\n\n{user_message}" if prompt_text else user_message
-                )
-            if not prompt_text:
-                prompt_text = "Describe this image in detail."
+            prompt_text = user_message or ("" if system_prompt else "Describe this image in detail.")
             user_content.append({"type": "text", "text": prompt_text})
             messages.append({"role": "user", "content": user_content})
 
@@ -1323,19 +1320,10 @@ def _generate_florence2(
         generated_ids, skip_special_tokens=False
     )[0]
 
-    # Define tasks that produce spatial data (bboxes, polygons, etc.)
-    spatial_tasks = [
-        "region_caption",  # Object detection with captions
-        "dense_region_caption",
-        "region_proposal",
-        "caption_to_phrase_grounding",
-        "ocr_with_region",
-        "referring_expression_segmentation",
-    ]
-
-    # Parse structured output (bounding boxes, labels, etc.) ONLY for spatial tasks
+    from .task_operations import florence_operation
+    operation = florence_operation(task_or_prompt)
     parsed_data = {}
-    is_spatial_task = task_or_prompt in spatial_tasks
+    is_spatial_task = bool(operation and operation.spatial)
 
     if is_spatial_task:
         # Try to parse with processor's post_process method

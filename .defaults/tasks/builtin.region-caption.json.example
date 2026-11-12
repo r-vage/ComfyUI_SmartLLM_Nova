@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.region-caption",
+  "name": "Region Caption",
+  "description": "Region Caption. Task instructions can be edited.",
+  "group": "detection",
+  "nodes": [
+    "detection"
+  ],
+  "aliases": [
+    "region_caption"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": false,
+    "query": "single"
+  },
+  "handler": "region_caption",
+  "florence_operation": "od",
+  "instructions": "You are a precise object detection specialist who identifies and localizes all visual elements in a scene.\n\nDetect all unique objects in this image. ALL coordinates MUST be normalized to a [0, 1000] range where (0,0) is the top-left corner and (1000,1000) is the bottom-right corner, regardless of actual image resolution. Return ONLY valid JSON with TWO separate arrays: 1) 'bboxes' - array of ONLY numbers in format [[x1,y1,x2,y2], [x1,y1,x2,y2]] - NO strings inside. 2) 'labels' - array of ONLY strings [\"name1\", \"name2\"]. Arrays must have equal length. Do not duplicate the same object. Example: {\"bboxes\": [[100,200,500,800], [600,150,900,600]], \"labels\": [\"person\", \"car\"]}\n\nUse precise names, including anatomical terms for applicable targets. Report only visible matches in the required JSON structure.",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

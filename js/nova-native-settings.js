@@ -86,7 +86,7 @@ export function bindSettings(node, group) {
         const field = group.fields.get(key), widget = field.widget;
         if (!values?.length && fallback) values = initialChoices(widget);
         if (!values) return;
-        if (userDriven && values.length && field.input?.link == null && !values.includes(widget.value)) {
+        if (key !== 'task' && userDriven && values.length && field.input?.link == null && !values.includes(widget.value)) {
             widget.value = values[0]; widget.callback?.(widget.value);
         }
         // Preserve saved values without adding incompatible tasks to the menu.

@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "builtin.detailed-analysis",
+  "name": "Detailed Analysis",
+  "description": "A thorough analysis of visible subjects, relationships and visual techniques.",
+  "group": "image",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [
+    "detailed_analysis"
+  ],
+  "input": {
+    "text": "optional",
+    "images": "required",
+    "sequence": true,
+    "query": "single"
+  },
+  "handler": "chat",
+  "florence_operation": null,
+  "instructions": "Analyze the image thoroughly in connected paragraphs. Examine each subject's appearance, clothing, overall pose, action and interaction with others. Describe spatial relationships, foreground and background details, camera angle, composition, focus, colors, textures and lighting. Explain how these visual choices shape the composition without guessing intent. Omit uncertain or unshown details without comment. Output only the analysis, without headings.\n\nDescribe supported anatomy and sexual activity directly, using terms such as breasts, nipples, vulva or penis where applicable. Do not infer nudity beneath clothing. Keep the task's requested format and detail.",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}
