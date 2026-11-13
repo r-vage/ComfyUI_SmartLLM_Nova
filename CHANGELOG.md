@@ -1,3 +1,33 @@
+## 2026-11-13
+
+### Version: 1.1.17
+
+- **Feat**
+  - Add a square Stop LM icon at the end of the loader Mode bar, keeping the collapsed bar on one row. Interrupt the current workflow and force-stop the selected managed Docker backend even with Keep loaded on; cancel native Transformers and GGUF at token boundaries. Reject stale execution stops and prevent cancelled Ollama requests from retrying or returning partial output.
+- **Fix**
+  - Ground both scene tasks in per-frame body framing and distinct movement phases. Keep hair movement when excluding appearance, omit routine speaking/singing descriptions, and avoid guessed handedness or motion across pose jumps. Full descriptions retain observed appearance changes without inventing actions to explain edits.
+  - Clarify that sampled windows can contain missed edits and that overlapping evidence does not establish another action cycle. Preserve framing changes and reported discontinuities during synthesis.
+- **Docs**
+  - Explain Stop LM, Docker recovery, native cancellation limits and its distinction from normal model unloading.
+  - Clarify that Scene Description (T2V) inspects source video or images while supplying appearance for generation without a reference image. Explain description limits and the need for detected boundaries when an edit requires its own part prompt.
+- **Changed files**
+  - core/sml/generation_control.py
+  - core/sml/generation_docker_stop.py
+  - core/sml/generation_api.py
+  - core/sml/backend_ollama_docker.py
+  - core/sml/backend_transformers.py
+  - core/sml/backend_gguf.py
+  - core/sml/server_endpoints.py
+  - py/RvLoader_SmartLMLoader.py
+  - js/nova-generation-stop.js
+  - js/nova-panel-form.js
+  - js/nova-panel.css
+  - .defaults/tasks/builtin.scene-motion-analysis.json.example
+  - .defaults/tasks/builtin.scene-description-t2v.json.example
+  - core/sml/sequence_analysis.py
+  - Readme/Smart_LM_Loader_Guide.md
+  - pyproject.toml
+
 ## 2026-11-12
 
 ### Version: 1.1.16

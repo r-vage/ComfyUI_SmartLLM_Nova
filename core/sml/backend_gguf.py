@@ -13,6 +13,7 @@ from io import BytesIO
 from typing import Any, Optional
 from .vlm_detection import tensor_to_pil
 from .logger import log
+from .generation_control import token_stopping_kwargs
 
 _LOG_PREFIX = "GGUF"
 
@@ -439,6 +440,7 @@ def _generate_gguf_vision(
             _extras["repeat_last_n"] = repeat_last_n
         if stop_sequences:
             _extras["stop"] = stop_sequences
+        _extras.update(token_stopping_kwargs("gguf"))
         response = smart_lm_instance.model.create_chat_completion(
             messages=messages,
             max_tokens=max_tokens,
@@ -647,6 +649,7 @@ def _generate_gguf_text(
             _extras["repeat_last_n"] = repeat_last_n
         if stop_sequences:
             _extras["stop"] = stop_sequences
+        _extras.update(token_stopping_kwargs("gguf"))
         response = smart_lm_instance.model.create_chat_completion(
             messages=messages,
             max_tokens=max_tokens,

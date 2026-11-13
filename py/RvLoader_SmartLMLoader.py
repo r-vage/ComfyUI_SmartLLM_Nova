@@ -27,6 +27,12 @@ from ..core.sml.creative_inputs import (
     uses_visual_support,
     visual_support_request,
 )
+from ..core.sml.generation_control import (
+    cancellable,
+    check_cancelled,
+    set_generation_backend,
+    with_generation_control,
+)
 from ..core.sml.image_inputs import (
     group_images,
     materialize_source,
@@ -504,6 +510,7 @@ def _h3_fallback_output(
 
 
 @with_prompt_flow
+@cancellable
 def _dispatch_generate(
     instance,
     *,
@@ -1757,11 +1764,12 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                     "text", is_output_list=True, tooltip="Generated text or tags."
                 ),
             ],
-            hidden=[io.Hidden.prompt, io.Hidden.extra_pnginfo, io.Hidden.unique_id],
+            hidden=[io.Hidden.prompt, io.Hidden.extra_pnginfo, io.Hidden.unique_id, io.Hidden.dynprompt],
         )
 
 
     @classmethod
+    @with_generation_control
     @with_execution_cleanup(_LOG_PREFIX)
     @task_scope()
     def _execute_engine(
@@ -1946,6 +1954,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
             task = selected_tasks[0].id
             selected_references = [selected.id for selected in selected_tasks]
         backend = entry["backend"]
+        set_generation_backend(backend)
         repo_id = entry.get("repo_id", "")
         family_str = entry.get("family", "")
         model_has_vision = entry.get("has_vision", False)
@@ -2491,6 +2500,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
             _LOG_PREFIX, f"Done ({elapsed:.1f}s) — {sum(len(r) for r in results)} chars"
         )
 
+        check_cancelled()
         # ── 11. Persist-on-execute: save changed defaults ──────
         # Only persist sampling params when Use Advanced is ON — otherwise the
         # gated defaults would overwrite the user's saved tuning.

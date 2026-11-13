@@ -39,16 +39,18 @@ def _window_prompt(prompt, frames, batch, layout, window_number):
             "first_tile": 1, "last_tile": len(frames), "layout": layout,
         }
         instruction = (
-            "The image is a chronological contact sheet from ONE shot/window. Each numbered tile is a separate "
+            "The image is a chronological contact sheet from one supplied window. Each numbered tile is a separate "
             "moment, not a different person or a collage in the scene. Read tiles left to right, top to bottom. "
             f"Read the starting pose from tile 1 and the ending pose from tile {len(frames)}. "
-            "Ignore the artificial gutters and labels in your description. Describe the continuous visible action; "
+            "Ignore the artificial gutters and labels in your description. Describe only the visible action; "
             "do not write one caption per tile."
         )
     else:
-        instruction = "The images are chronological samples from ONE shot/window; describe their continuous visible action."
+        instruction = "The images are chronological samples from one supplied window; describe only the visible action."
     instruction += (
-        " This may be an excerpt of a longer scene. Do not invent a new beginning or a return to the starting pose. "
+        " This may be an excerpt of a longer scene and may contain an undetected edit. "
+        "Do not invent movement connecting an abrupt pose or framing change. "
+        "Do not invent a new beginning or a return to the starting pose. "
         "Retain relevant framing, posture, movements, expressions and task-appropriate scene detail. "
         "Respect the selected task's requested format and level of detail. "
         "Summarize repeated motion once; do not infer motion or audio from gaps."
@@ -95,10 +97,15 @@ def _merge(observations, prompt, task, generate, context_size, max_tokens):
     instruction = (
         "Combine the following independently observed chronological windows into ONE response in the selected task's format. "
         "Use only these observations; images are not attached to this synthesis request. Overlapping windows show some of "
-        "the same action: remove duplicate observations and summarize repetition once. Preserve distinct intermediate gestures, "
+        "the same action: their shared source positions are shared evidence, not another action cycle. "
+        "Combine descriptions of the same movement phase instead of concatenating each window action list. "
+        "Preserve separately observed repetitions and distinct intermediate gestures, "
         "framing, camera movement, expressions and all task-appropriate appearance/setting detail. Keep simultaneous actions together. "
         "Start the generation paragraph with opening_framing and scene_start_pose when supplied, and preserve scene_end_pose "
-        "as the ending snapshot. Intermediate window boundaries do not imply a reset or another gesture. "
+        "as the ending snapshot. Keep observed framing changes after the opening. "
+        "Intermediate window boundaries do not imply a reset or another gesture. "
+        "An unchanged shot number does not prove continuous motion: retain reported discontinuities and "
+        "uncertainties without inventing connecting movement. "
         "Cover the whole observation sequence, not only its final window. A changed shot number is a cut: preserve the changed framing/pose "
         "without inventing motion across the cut. Do not copy window labels, timestamps or analysis instructions into the prompt. "
         "Keep the selected task's level of detail without a separate summary length limit. "

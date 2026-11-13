@@ -38,6 +38,7 @@ from .device import get_docker_gpu_args
 from .docker_image_policy import resolve_managed_docker_image
 from .json_store import update_json_object, write_json_object
 from .logger import log
+from .generation_control import cancellable, check_cancelled
 
 _LOG_PREFIX = "Ollama Docker"
 
@@ -246,8 +247,15 @@ def _save_full_config(config: Dict[str, Any]):
 # ==============================================================================
 
 
+@cancellable
+def _post_inference(*args, **kwargs):
+    return requests.post(*args, **kwargs)
+
+
 def _run_docker_cmd(args: List[str], timeout: int = 30) -> tuple[bool, str]:
     # Run a docker command and return (success, output).
+    if args and args[0] in {"start", "run", "exec", "pull"}:
+        check_cancelled()
     if not DOCKER_AVAILABLE:
         return False, "Docker not available"
 
@@ -652,6 +660,7 @@ def _remove_ollama_container_for_recreation(reason: str) -> bool:
     return False
 
 
+@cancellable
 def start_ollama_container(
     port: Optional[int] = None,
     gpu_layers: int = -1,
@@ -755,6 +764,7 @@ def stop_ollama_container() -> bool:
     return success
 
 
+@cancellable
 def wait_for_ollama_ready(timeout: int = 60) -> bool:
     # Wait for Ollama API to be ready.
     config = _get_ollama_config()
@@ -767,6 +777,7 @@ def wait_for_ollama_ready(timeout: int = 60) -> bool:
     poll_interval = 2
 
     while time.time() - start_time < timeout:
+        check_cancelled()
         # Check if container is still running
         if not is_ollama_container_running():
             log.warning(_LOG_PREFIX, "Ollama container stopped unexpectedly")
@@ -1973,7 +1984,7 @@ def generate_with_ollama(
     request_timeout = get_ollama_request_timeout()
 
     try:
-        response = requests.post(url, json=payload, timeout=request_timeout)
+        response = _post_inference(url, json=payload, timeout=request_timeout)
 
         if response.status_code == 200:
             data = response.json()
@@ -2181,7 +2192,7 @@ def generate_with_ollama_vision(
                 f"Trying /api/chat for vision with model: {model_name}"
                 + (f" (attempt {attempt + 1}/{max_retries})" if attempt > 0 else ""),
             )
-            response = requests.post(
+            response = _post_inference(
                 chat_url, json=chat_payload, timeout=request_timeout
             )
 
@@ -2279,7 +2290,7 @@ def generate_with_ollama_vision(
         generate_payload["system"] = system_prompt
 
     try:
-        response = requests.post(
+        response = _post_inference(
             generate_url, json=generate_payload, timeout=request_timeout
         )
 
@@ -2642,6 +2653,7 @@ def ensure_ollama_running() -> bool:
     return start_ollama_container()
 
 
+@cancellable
 def load_model_in_ollama(model_name: str, auto_pull: bool = True) -> tuple:
     # Ensure a model is loaded in Ollama.
     #
@@ -2748,6 +2760,7 @@ def load_model_in_ollama(model_name: str, auto_pull: bool = True) -> tuple:
 # ==============================================================================
 
 
+@cancellable
 def load_ollama(
     model_path: str,
     model_type: str = "llm",

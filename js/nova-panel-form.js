@@ -1,5 +1,6 @@
 /** Jade/Director layout inspired by DaSiWa; DOM controls own their visibility. */
 import { app, api } from './comfy/index.js';
+import { GenerationStopControl } from './nova-generation-stop.js';
 import { element, button, SearchMenu, groupedModelOptions } from './nova-panel-controls.js';
 import { TextFieldSizes } from './nova-panel-text-layout.js';
 import { seedControls } from './nova-panel-seed-controls.js';
@@ -16,6 +17,7 @@ export class PanelForm {
     constructor(controller) {
         this.controller = controller; this.menu = new SearchMenu(); this.textSizes = new TextFieldSizes(controller);
         this.sequence = 0; this.taskLibrary = new TaskLibrary(this);
+        if (this.spec.kind === 'loader') this.stopControl = new GenerationStopControl(controller);
         this.unsubscribe = onSmartLLMRegistryChanged(() => this.refresh(false));
         // One coalesced metadata request per selected model, no graph polling.
         queueMicrotask(() => this.refresh(false));
@@ -165,6 +167,7 @@ export class PanelForm {
             }
         }
         parent.append(bar);
+        this.stopControl?.render(bar, parent);
     }
     section(parent, key, label, rows, extra) {
         const open = this.state.sectionOpen(key), section = element('section', 'sln-panel-section'), header = element('div', 'sln-panel-section-header');
@@ -259,5 +262,5 @@ export class PanelForm {
     }
     restore() { this.sequence++; this.model = null; this.refresh(false); }
     dispose() { this.sequence++; this.menu.close(); this.textSizes.disconnect(); this.taskLibrary.dispose(); }
-    destroy() { this.dispose(); this.unsubscribe?.(); }
+    destroy() { this.dispose(); this.unsubscribe?.(); this.stopControl?.destroy(); }
 }

@@ -322,6 +322,8 @@ class SMLConfigEndpoints:
         self._register_endpoints()
 
     def _register_endpoints(self):
+        from .generation_api import register
+        register(PromptServer.instance.routes, _read_json_object, _global_mutation_denial)
 
         # ==================== CONFIG ====================
 

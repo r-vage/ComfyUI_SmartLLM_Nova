@@ -104,7 +104,7 @@ The **Smart LM Loader** is a unified node for loading and running vision-languag
 | **Multi-Task Chaining** | Select compatible tasks in order, with output→input flow |
 | **Task Instructions** | One editable instruction set per task, with no example conversations or profile switches |
 | **Editable System Prompts** | Preview instructions in Prompt; edit the task file or Direct Chat’s local system text |
-| **Mode Bar** | Cleanup, Keep loaded, Sampling, Thinking (supported backends), Local seed |
+| **Mode Bar** | Cleanup, Keep loaded, Sampling, Thinking (supported backends), Local seed, Stop LM |
 | **Persist-on-Execute** | Advanced parameters (temperature, top_p, etc.) saved to defaults on each run |
 | **Docker Lifecycle** | Auto-start/stop containers, stale image detection |
 | **Image Passthrough** | Input images flow through to the output for downstream nodes |
@@ -179,6 +179,28 @@ the result onward. Unrelated ComfyUI models and containers are unaffected.
 Keep the output connected to the downstream work that should wait for cleanup.
 For scene analysis, connect **Loop End → Smart LM Unload → Save Scene Analysis**;
 putting it directly after the loader inside the loop would unload every iteration.
+
+#### Stopping a hung generation
+
+Click the **■ (Stop LM)** icon at the right end of the loader's Mode bar while
+that loader is running. It stays on the same row when Mode is collapsed, with
+its action available in the tooltip and accessible label. It interrupts the current workflow,
+including a scene-analysis loop. Partial output is discarded. The stop request
+belongs to that execution; an old browser request cannot stop a later queue.
+
+For **Ollama, vLLM, SGLang and llama.cpp Docker**, Stop LM force-stops the selected
+backend's running containers owned by this SmartLLM Nova installation, even with
+**Keep loaded on**. Ollama cancellation skips vision fallback and retries. Model
+files are retained, and the backend can start again on the next run. Queued
+prompts are not removed.
+
+Native **Transformers and GGUF** check for cancellation after each generated
+token. Other native runtimes stop at their available interruption checks. A
+blocked native load, GPU kernel or driver call must return before cleanup can
+finish; Stop LM does not terminate the ComfyUI process. If Docker cannot be
+reached, the panel reports the error and permits another stop attempt while the
+loader remains active. In ComfyUI multi-user mode, this global operation follows
+SmartLLM's existing loopback-only restriction.
 
 #### Image handling section
 
@@ -757,7 +779,7 @@ Docker backends are configured in `docker_config.json`:
 ```
 
 - Containers auto-start when needed
-- Stop behavior follows the **Keep loaded** Mode option; disable it to release the model after inference
+- Automatic cleanup follows **Keep loaded**; disable it to release the model after inference. **Stop LM** overrides it to force-stop a running generation.
 - AMD/ROCm GPUs auto-detected — correct Docker images selected automatically
 - Packaged images are pinned by release tag and immutable digest; legacy stock
   aliases resolve to those pins automatically
@@ -1007,7 +1029,7 @@ The **Image handling** section below Model contains **Together**, **Longest side
 
 **Scene Motion Analysis** is for image-to-video. It transfers camera geometry, posture, visible movement and expression to a separate character reference. The target reference supplies appearance and setting. The task explicitly instructs the model to keep source identity, gender, clothing, accessories, colors and environment out of every output field, including `performance_prompt`, and asks the model to check that scope before returning. The paragraph and supporting observations use the same inference per window. Use neutral subject/body terms and enough grounded detail for the scene, without a fixed sentence count or word limit. Physical contact remains an action without a description of the contacted item's appearance. The schema needs no `appearance` field. These instructions guide the model; review warnings remain advisory and cannot guarantee compliance.
 
-**Scene Description (T2V)** includes relevant visible subjects, appearance, clothing, accessories, setting, lighting and motion directly in the generation paragraph. Its additional `appearance` field is optional supporting metadata. Omitting it needs no correction call; blank or structured values are retained with a review warning. Generation uses the unchanged `performance_prompt` paragraph. Both tasks use the same ordered images and one normal inference per window, with the existing bounded correction attempt for invalid output. Context may supply integer `scene_id` and `window_id` plus frame IDs/timestamps. A single image establishes a pose without invented movement. Neither task infers audio or unseen events.
+**Scene Description (T2V)** includes relevant visible subjects, appearance, clothing, accessories, setting, lighting and motion directly in the generation paragraph. Here T2V means the downstream generator has no separate appearance reference image. The analysis task still requires and inspects the source VIDEO, IMAGE batch, or detector-provided disk frames, using the same input paths as Scene Motion Analysis. Its additional `appearance` field is optional supporting metadata. Omitting it needs no correction call; blank or structured values are retained with a review warning. Generation uses the unchanged `performance_prompt` paragraph. Both tasks use the same ordered images and one normal inference per window, with the existing bounded correction attempt for invalid output. Context may supply integer `scene_id` and `window_id` plus frame IDs/timestamps. A single image establishes a pose without invented movement. Neither task infers audio or unseen events.
 
 The loader records the actual task policy as `description_mode: motion` or `full`. The optional [Eclipse Nova scene-analysis nodes](https://github.com/r-vage/ComfyUI_Eclipse_Nova/blob/main/Readme/Scene_Analysis.md) measure cuts, collect descriptions and export H3 part prompts. The collector accepts motion results without appearance and preserves new task paragraphs without appearance rewriting. Use the H3 adapter's **exclude source appearance** with Motion Analysis, or **include source appearance** with T2V. The selected task defines the intended policy; it cannot guarantee model compliance. Changing policy requires another analysis run because motion analysis does not request a complete appearance description. Custom system prompts remain user-owned and must follow the selected structure. Prompt compliance and observation accuracy still need review.
 
@@ -1030,6 +1052,10 @@ Backend processors can differ in image limits and motion interpretation. Review 
 ### Scene poses and ongoing motion
 
 Both scene tasks instruct the model to begin `performance_prompt` with the observed shot size, camera angle, composition and visible starting pose, then describe the action and expression. Include head/torso facing direction and pose-defining hand placement when visible. A still pose still needs a description: "static" alone does not tell the video model which posture to hold. Keep these details in the generation paragraph itself; the separate `framing` and `start_pose` fields are supporting observations and are not added to H3 prompts. Existing saved paragraphs need another analysis run or an edit in Prompt Review to gain missing details.
+
+Both tasks judge shot size from the body extent in each frame and retain changes in framing. They describe distinct movement phases, avoid guessing handedness or complete gestures from sparse poses, and omit routine speaking/singing descriptions from the generation paragraph. Excluding appearance still allows visible hair movement and contact; hair color, length and style remain excluded. The T2V task keeps observed appearance changes without inventing an action to explain an edit or blend.
+
+A detected scene can still contain a missed edit. Window analysis and synthesis are instructed to retain abrupt pose/framing changes and visibility limits without inventing motion between them. Overlapping windows share evidence rather than establishing another action cycle. These instructions do not add detected cuts or change H3 timing: missed edits need separate scene boundaries for separate part prompts. Model recognition still needs visual review.
 
 Scene Motion Analysis treats each window as an excerpt that can begin mid-gesture. Its start/end pose fields describe positions already present in the boundary frames; actions describe observed changes between frames, including small finger/wrist movements while the arms stay raised. Partial or ambiguous arcs belong in uncertainty. Recognized movement verbs in pose fields produce a review warning while preserving the description. Existing saved descriptions cannot recover motion omitted by an earlier analysis, so rerun those windows for the updated task.
 

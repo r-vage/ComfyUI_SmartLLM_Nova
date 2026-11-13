@@ -18,6 +18,7 @@ from typing import Any, Optional
 
 import torch  # type: ignore
 
+from .generation_control import token_stopping_kwargs
 from .image_inputs import sequence_request
 from .logger import log
 
@@ -1014,6 +1015,7 @@ def _generate_vlm(
         ) or getattr(tokenizer, "eos_token_id", None)
         gen_kwargs["use_cache"] = True
 
+    gen_kwargs.update(token_stopping_kwargs("transformers"))
     # ── 7. GENERATE ─────────────────────────────────────────────────────
     try:
         import logging
@@ -1309,6 +1311,7 @@ def _generate_florence2(
         # has a bug in prepare_inputs_for_generation that doesn't handle None past_key_values
         "use_cache": False,
     }
+    florence_gen_kwargs.update(token_stopping_kwargs("transformers"))
     generated_ids = base_instance.model.generate(**florence_gen_kwargs)
 
     # Decode with skip_special_tokens=True to get clean text first
@@ -1704,6 +1707,7 @@ def _generate_llm(
             "do_sample": temperature > 0,
             "pad_token_id": smart_lm_instance.processor.eos_token_id,
         }
+        llm_gen_kwargs.update(token_stopping_kwargs("transformers"))
         outputs = smart_lm_instance.model.generate(**inputs, **llm_gen_kwargs)
 
         # Decode only the generated tokens (skip input)
