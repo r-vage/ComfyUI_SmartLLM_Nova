@@ -53,7 +53,9 @@ export class PanelForm {
         const content = element('div', 'sln-panel-content'), kind = this.spec.kind;
         if (this.connected('pipe_opt')) content.append(element('div', 'sln-panel-note',
             kind === 'loader'
-                ? 'Connected settings and prompts override matching values below. Missing settings use these local values. Use Smart LM Prompt Pipe to connect external prompt text.'
+                ? this.params.merge_user_prompt
+                    ? 'Connected settings override matching values below. Merge adds this node’s Prompt text after the connected user prompt.'
+                    : 'Connected settings and prompts override matching values below. Missing settings use these local values. Enable Merge beside Prompt to add local guidance.'
                 : 'Connected settings and query text override matching values below. Missing settings use these local values. Use Smart Detection Prompt Pipe to connect external query text.'));
         const entry = this.model === this.params[this.modelKey] ? this.entry : null;
         const backend = entry?.backend, family = entry?.family, wd = backend === 'wd14', yolo = backend === 'yolo', florence = family === 'Florence';
@@ -224,8 +226,21 @@ export class PanelForm {
             };
             input.title = `${value}\n${spec.tip}${this.connected(key) ? '\nConnected input overrides this value.' : ''}`; return;
         }
-        const wrap = element('label', 'sln-panel-field'); wrap.append(element('span', '', `${label}${this.connected(key) ? ' · input' : ''}`));
+        const mergePrompt = key === 'user_prompt' && this.spec.fields.merge_user_prompt;
+        const wrap = element(mergePrompt ? 'div' : 'label', 'sln-panel-field');
         const input = element(spec.multiline ? 'textarea' : 'input'); input.dataset.field = key; input.title = spec.tip;
+        if (mergePrompt) {
+            const heading = element('div', 'sln-panel-tools sln-panel-prompt-label');
+            const textLabel = element('label', '', label);
+            input.id = `sln-user-prompt-${crypto.randomUUID()}`; textLabel.htmlFor = input.id;
+            const merge = button('Merge', this.spec.fields.merge_user_prompt.tip, () => this.edit(state => {
+                state.config.parameters.merge_user_prompt = !state.config.parameters.merge_user_prompt;
+            }));
+            merge.className = 'sln-panel-toggle'; merge.dataset.field = 'merge_user_prompt';
+            merge.setAttribute('aria-label', 'Merge local prompt');
+            merge.setAttribute('aria-pressed', String(!!this.params.merge_user_prompt));
+            heading.append(textLabel, merge); wrap.append(heading);
+        } else wrap.append(element('span', '', `${label}${this.connected(key) ? ' · input' : ''}`));
         if (spec.type === 'BOOLEAN') { input.type = 'checkbox'; input.checked = value; wrap.classList.add('sln-panel-check'); }
         else if (['INT', 'FLOAT'].includes(spec.type)) {
             input.type = 'number'; for (const name of ['min', 'max', 'step']) if (spec[name] != null) input[name] = spec[name]; input.value = value;

@@ -40,6 +40,8 @@
 .sln-panel .sln-panel-section-header > .sln-task-trigger { flex: 1; width: auto; gap: 8px; }
 .sln-panel-section-body { padding-top: 7px; }
 .sln-panel-tools { display: flex; gap: 5px; }
+.sln-panel-prompt-label { align-items: center; }
+.sln-panel .sln-panel-prompt-label button { padding: 2px 6px; }
 .sln-panel-tools > :last-child { margin-left: auto; }
 .sln-panel-note { font-size: 11px; color: var(--sln-muted); }
 .sln-panel-error { color: var(--sln-design-error); }

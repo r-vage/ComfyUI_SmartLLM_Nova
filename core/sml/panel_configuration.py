@@ -11,6 +11,7 @@ from .settings_controls import SETTINGS_TYPES
 from .settings_pipe import (
     LM_PROMPT_KEYS,
     SYSTEM_PROMPT_SPEC,
+    append_user_guidance,
     settings_pipe_parameters,
     validate_pipe_prompt,
 )
@@ -237,9 +238,12 @@ class SmartLLMPanel:
         spec = cls._panel_spec()
         config = parse_configuration(configuration, spec)
         params = config["parameters"]
+        local_prompt = params.get("user_prompt", "")
+        connected_prompt = False
         if cls.PANEL_KIND in SETTINGS_TYPES:
             overrides = parse_settings_pipe(inputs.pop("pipe_opt", None), spec)
             params.update(overrides)
+            connected_prompt = "user_prompt" in overrides
             if cls.PANEL_KIND == 'loader' and 'task' in overrides and 'task_sequence' not in overrides:
                 params['task_sequence'] = ''
                 params['multi_task_mode'] = overrides.get('multi_task_mode', False)
@@ -258,6 +262,12 @@ class SmartLLMPanel:
                 params[key] = [validate_value(item, key, spec["fields"][key]) for item in value]
             else:
                 params[key] = validate_value(scalar(value), key, spec["fields"][key])
+            if key == "user_prompt":
+                connected_prompt = True
+        if cls.PANEL_KIND == "loader":
+            merge_prompt = params.pop("merge_user_prompt", False)
+            if merge_prompt and connected_prompt:
+                params["user_prompt"] = append_user_guidance(params["user_prompt"], local_prompt)
         seed = config.get("seed")
         external_seed = scalar(inputs.pop("seed_input", None))
         if seed:

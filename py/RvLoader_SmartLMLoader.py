@@ -1508,6 +1508,10 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                 ),
                 # ── Prompt / context ──────────────────────────────────
                 main_fields["user_prompt"],
+                io.Boolean.Input(
+                    "merge_user_prompt", default=False, optional=True,
+                    tooltip="Append this node's Prompt text as additional guidance after the connected user prompt. Off keeps the connected prompt's normal override. With no connected prompt, use the local text once.",
+                ),
                 main_fields["context_size"],
                 main_fields["max_tokens"],
                 io.Combo.Input(

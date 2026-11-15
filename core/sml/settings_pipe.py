@@ -33,6 +33,17 @@ def validate_pipe_prompt(value, key):
     return value
 
 
+def append_user_guidance(prompt, guidance):
+    """Keep connected context first, including scene JSON and prompt-list order."""
+    if not guidance.strip():
+        return prompt
+
+    def append(text):
+        return f"{text}\n\nAdditional user guidance:\n{guidance}" if text.strip() else guidance
+
+    return [append(text) for text in prompt] if isinstance(prompt, list) else append(prompt)
+
+
 def merge_lm_prompt_pipe(pipe_opt=None, user_prompt=None, system_prompt=None):
     """Connected prompts override a settings pipe without changing its producer."""
     params = settings_pipe_parameters(pipe_opt, "loader")

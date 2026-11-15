@@ -131,6 +131,7 @@ progress.
 | **quantization** | Dropdown | Q4_K_M | Native GGUF and llama.cpp Docker — quantization variant |
 | **Tasks** | Separate resizable panel | Detailed Description | Select one task or an ordered compatible chain on the left; edit reusable instructions and templates on the right |
 | **user_prompt** | String | — | Optional additional information, question, or constraints. The selected task already loads its system prompt, so this is normally empty for standard vision tasks |
+| **Merge** | Toggle beside the Prompt text-box label | Off | Append the local Prompt text as additional guidance after a connected user prompt |
 | **context_size** | Integer | 8192 | Model context window (512–131072). Persisted on execute |
 | **max_tokens** | Integer | 4096 | Maximum tokens to generate (1–32768) |
 | **attention_mode** | Dropdown | auto | Transformers only — auto, flash_attention_2, sdpa, eager |
@@ -301,6 +302,15 @@ Pipe**, then connect its `settings` output to `pipe_opt`. It works without nativ
 settings widgets, or passes through **Smart LM Settings** while overriding its
 prompts. User prompt lists are supported with one shared system instruction.
 Unconnected prompt inputs preserve incoming values; empty text is an explicit override.
+
+The small **Merge** toggle beside the **Prompt** label immediately above the
+loader's text box is off by default: connected user prompts replace that local
+text. Turn it on to keep the connected prompt first and append the local text as
+**Additional user guidance**. For a prompt list, the same guidance is appended to
+each entry. Scene context stays first, preserving scene IDs and frame timestamps.
+With no connected user prompt, the local text is used once; with an empty local
+text box, the incoming prompt stays unchanged. Merge is saved with each loader
+and does not change the selected task or system instructions.
 
 A nonblank `system_prompt` in the pipe replaces
 that task's built-in instructions, so the provided text must be self-contained:

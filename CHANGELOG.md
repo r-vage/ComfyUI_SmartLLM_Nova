@@ -1,3 +1,20 @@
+## 2026-11-15
+
+### Version: 1.1.18
+
+- **Feat**
+  - Add a compact Merge toggle beside the loader's Prompt text-box label. Opt in to append local guidance after connected user prompts, including every entry in a prompt list, while retaining scene context and frame timing. Default off preserves connected-prompt overrides; unconnected prompts use local text once.
+- **Docs**
+  - Explain prompt merging, per-loader persistence, and its relationship to connected prompts and task instructions.
+- **Changed files**
+  - core/sml/settings_pipe.py
+  - core/sml/panel_configuration.py
+  - py/RvLoader_SmartLMLoader.py
+  - js/nova-panel-form.js
+  - js/nova-panel.css
+  - Readme/Smart_LM_Loader_Guide.md
+  - pyproject.toml
+
 ## 2026-11-13
 
 ### Version: 1.1.17
