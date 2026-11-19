@@ -1,3 +1,14 @@
+## 2026-11-19
+
+### Version: 1.1.19
+
+- **Fix**
+  - Add the leading zero to decimal entries in custom panels when users press Enter, press Tab or click away, including negative decimals.
+  - Select the whole editable field on double-click in custom panels, including text, multiline prompts, numbers and seeds, so typing replaces its contents.
+- **Changed files**
+  - js/nova-panel-controls.js
+  - pyproject.toml
+
 ## 2026-11-15
 
 ### Version: 1.1.18
