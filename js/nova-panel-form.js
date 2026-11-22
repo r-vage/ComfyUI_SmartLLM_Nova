@@ -85,7 +85,7 @@ export class PanelForm {
             if (wd) this.section(content, 'tagging', 'Tagging', ['threshold', 'char_threshold', 'replace_underscore']);
             else {
                 this.section(content, 'prompt', 'Prompt', [], body => { this.taskLibrary.prompt(body); this.field(body, 'user_prompt'); });
-                this.section(content, 'generation', 'Generation', [backend === 'comfyui' ? 'max_tokens' : ['context_size', 'max_tokens']]);
+                this.section(content, 'generation', 'Generation', [['context_size', 'max_tokens']]);
                 if (this.params.use_advanced) this.sampling(content, florence, backend, entry?.has_vision === false);
             }
             this.section(content, 'hardware', 'Hardware', ['device', ...(backend === 'transformers' ? ['attention_mode', ...(entry?.has_vision === false ? [] : ['use_torch_compile'])] : [])]);
@@ -265,7 +265,7 @@ export class PanelForm {
                 : `Together: ${p.image_handling === 'legacy' ? 'Legacy' : p.image_handling === 'frame_sequence' ? 'On' : 'Off'} · ${p.max_image_side ? `${p.max_image_side}px` : 'Auto size'}${p.image_handling === 'frame_sequence' ? ` · Every ${p.image_stride}` : ''}`,
             video: `${p.video_sample_fps} FPS · ${p.video_cut_threshold ? `Cut threshold ${p.video_cut_threshold}` : 'Continuous shot'}`,
             prompt: p.user_prompt ? `${p.user_prompt.length} characters` : '',
-            generation: this.entry?.backend === 'comfyui' ? `${p.max_tokens} tokens` : `${p.max_tokens} tokens · ${p.context_size} context`,
+            generation: `${p.max_tokens} tokens · ${p.context_size} context`,
             hardware: p.device, sampling: p.do_sample ? `Temperature ${p.temperature}` : 'Greedy',
             tagging: `${p.threshold} · ${p.char_threshold}`, detection: p.task,
             adjustments: `Crop ${p.crop_factor} · Dilation ${p.dilation}`, mask: `Grow ${p.grow} · Blur ${p.blur}`,

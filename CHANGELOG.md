@@ -1,3 +1,23 @@
+## 2026-11-22
+
+### Version: 1.1.20
+
+- **Fix**
+  - Expose Context size beside Max tokens for native ComfyUI encoders. A multi-window merge error reports the effective settings and the available space for observations.
+  - Scene Motion Analysis asks for hand, body, gaze and facial movement while excluding source mouth cues, hair and clothing from lip-sync prompts. A valid response with recognized source detail stays available for editing with a review warning.
+  - Stop sustained Qwen3-VL scene loops even in comma-separated or unpunctuated descriptions. Recover editable wording from truncated paragraphs and retain the original window descriptions when synthesis cannot finish.
+- **Changed files**
+  - .defaults/tasks/builtin.scene-motion-analysis.json.example
+  - README.md
+  - Readme/Smart_LM_Loader_Guide.md
+  - core/sml/backend_comfyui.py
+  - core/sml/scene_motion.py
+  - core/sml/sequence_analysis.py
+  - core/sml/settings_controls.py
+  - js/nova-panel-form.js
+  - py/RvLoader_SmartLMLoader.py
+  - pyproject.toml
+
 ## 2026-11-19
 
 ### Version: 1.1.19

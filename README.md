@@ -218,7 +218,7 @@ Use **Together: On** with an ordered frame selection and choose:
 
 | Task | Output focus |
 | --- | --- |
-| **Scene Motion Analysis** | Framing, existing poses, movement and expression for a separate character reference |
+| **Scene Motion Analysis** | Framing, body and hand movement, gaze and non-mouth facial expression for lip-sync with a separate character reference |
 | **Scene Description (T2V)** | Visible appearance, setting, framing and movement for text-to-video |
 
 Both tasks produce a generation paragraph and structured observations in the same

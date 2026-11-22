@@ -132,7 +132,7 @@ progress.
 | **Tasks** | Separate resizable panel | Detailed Description | Select one task or an ordered compatible chain on the left; edit reusable instructions and templates on the right |
 | **user_prompt** | String | — | Optional additional information, question, or constraints. The selected task already loads its system prompt, so this is normally empty for standard vision tasks |
 | **Merge** | Toggle beside the Prompt text-box label | Off | Append the local Prompt text as additional guidance after a connected user prompt |
-| **context_size** | Integer | 8192 | Model context window (512–131072). Persisted on execute |
+| **context_size** | Integer | 8192 | Token budget (512–131072) for multi-window synthesis. Also sets the model context on configurable backends |
 | **max_tokens** | Integer | 4096 | Maximum tokens to generate (1–32768) |
 | **attention_mode** | Dropdown | auto | Transformers only — auto, flash_attention_2, sdpa, eager |
 | **seed** | 64-bit integer | Random | Seed section with fixed/random/increment/decrement policies and −/+ controls |
@@ -238,9 +238,15 @@ Supply one scene as an IMAGE sequence or disk source. Long selections use bounde
 windows with up to two overlapping frames. Each window is analyzed independently;
 a final text-only synthesis combines the observations into one result, removing
 overlap without treating each window as a new opening pose. Large observation
-sets use staged synthesis within the configured context allowance. Max tokens
-applies to each generation, including synthesis. Single-window requests need no
-extra call. The loader reuses the loaded model throughout.
+sets use staged synthesis within the configured context allowance. In **Generation**,
+**Context size** controls how much window evidence SmartLLM can combine in a
+single request. **Max tokens** limits the response from each window and the final
+synthesis. When two neighboring observations exceed this allowance, Scene Motion
+Analysis and Scene Description (T2V) keep their original window paragraphs in
+order and flag the combined prompt for review. Other tasks report the effective
+settings and estimated allowance. A connected settings pipe can override the
+panel values.
+Single-window requests need no extra call. The loader reuses the loaded model throughout.
 
 Grid can only see the frames supplied in the current call. For a complete scene
 from Eclipse, sample across that scene and set its upstream window capacity high
@@ -499,7 +505,7 @@ With **Thinking off**, the full output allowance is available for the answer.
 This bounds reasoning length, not seconds per token;
 CPU offloading can still make a large checkpoint slow.
 
-Sampling supports temperature, top-k, top-p, min-p, repetition penalty and greedy generation. Native generation determines its own context allocation, so context-size, beam-search and Transformers-specific controls are hidden. Custom stop strings trim the decoded response; they do not stop native token generation early. Native EOS tokens still stop generation normally.
+Sampling supports temperature, top-k, top-p, min-p, repetition penalty and greedy generation. ComfyUI manages the native encoder’s context allocation. SmartLLM uses **Generation → Context size** when combining observations from multiple Grid or VIDEO windows. Custom stop strings trim the decoded response; they do not stop native token generation early. Native EOS tokens still stop generation normally.
 
 These shared files are outside Registry Manager's editing and deletion actions. Remove or replace them using your normal ComfyUI model-folder workflow. A missing saved selection remains visible as unavailable instead of silently choosing another model.
 
@@ -1037,11 +1043,11 @@ The **Image handling** section below Model contains **Together**, **Longest side
 - **Longest side = 0** keeps automatic model sizing. A positive value reduces input dimensions while respecting model limits and avoiding source upscaling. Dynamic patch alignment may round down. Known fixed/minimum processor sizes are checked; remote servers still own their final preprocessing. The ordinary IMAGE output retains the original input pixels.
 - **Every Nth frame** applies to Together or Grid for IMAGE/disk input, defaults to 1, and always includes the first and last supplied image. It samples the supplied batch, which may already have been sampled upstream. Two at 30 source fps gives 15 samples/second only when the input actually contains every original frame. Use 1 to retain brief gestures/expressions or when sampling upstream.
 
-**Scene Motion Analysis** is for image-to-video. It transfers camera geometry, posture, visible movement and expression to a separate character reference. The target reference supplies appearance and setting. The task explicitly instructs the model to keep source identity, gender, clothing, accessories, colors and environment out of every output field, including `performance_prompt`, and asks the model to check that scope before returning. The paragraph and supporting observations use the same inference per window. Use neutral subject/body terms and enough grounded detail for the scene, without a fixed sentence count or word limit. Physical contact remains an action without a description of the contacted item's appearance. The schema needs no `appearance` field. These instructions guide the model; review warnings remain advisory and cannot guarantee compliance.
+**Scene Motion Analysis** is for image-to-video with a separate appearance reference and lip-sync audio. It requests framing, head and body posture, hand and finger actions, gaze, eye and brow movement, and other non-mouth facial expression. It asks the model to omit mouth shapes, smiles, lip articulation, source clothing and hair throughout the JSON. When these coincide with a gesture, the task asks for the visible gesture and body landmarks. The paragraph and supporting fields share one inference. Recognized source details in an otherwise valid paragraph produce a review warning. The original response stays available for editing.
 
 **Scene Description (T2V)** includes relevant visible subjects, appearance, clothing, accessories, setting, lighting and motion directly in the generation paragraph. Here T2V means the downstream generator has no separate appearance reference image. The analysis task still requires and inspects the source VIDEO, IMAGE batch, or detector-provided disk frames, using the same input paths as Scene Motion Analysis. Its additional `appearance` field is optional supporting metadata. Omitting it needs no correction call; blank or structured values are retained with a review warning. Generation uses the unchanged `performance_prompt` paragraph. Both tasks use the same ordered images and one normal inference per window, with the existing bounded correction attempt for invalid output. Context may supply integer `scene_id` and `window_id` plus frame IDs/timestamps. A single image establishes a pose without invented movement. Neither task infers audio or unseen events.
 
-The loader records the actual task policy as `description_mode: motion` or `full`. The optional [Eclipse Nova scene-analysis nodes](https://github.com/r-vage/ComfyUI_Eclipse_Nova/blob/main/Readme/Scene_Analysis.md) measure cuts, collect descriptions and export H3 part prompts. The collector accepts motion results without appearance and preserves new task paragraphs without appearance rewriting. Use the H3 adapter's **exclude source appearance** with Motion Analysis, or **include source appearance** with T2V. The selected task defines the intended policy; it cannot guarantee model compliance. Changing policy requires another analysis run because motion analysis does not request a complete appearance description. Custom system prompts remain user-owned and must follow the selected structure. Prompt compliance and observation accuracy still need review.
+The loader records the selected task as `description_mode` and preserves its original observations. In Eclipse Nova, choose **Exclude source appearance** to filter recognized mouth and appearance details from editable lip-sync part prompts. Choose **Include source appearance** to export a full T2V paragraph. When exclusion would empty a part, the exporter returns its original text and flags it for review. [Eclipse Nova scene-analysis nodes](https://github.com/r-vage/ComfyUI_Eclipse_Nova/blob/main/Readme/Scene_Analysis.md)
 
 The paragraph and observations use the same inference call per window. Multi-window Grid or VIDEO requests add text synthesis; a single window does not. Usable text with recognized appearance, gendered wording or movement misplaced in boundary poses is preserved with `review_warnings`. Length alone is not a review warning. Content warnings neither retry generation nor stop the scene loop. Eclipse saves the text and reports the warnings so you can copy part prompts into the manual inputs and edit them. These checks recognize bounded patterns and cannot establish semantic correctness.
 
@@ -1071,7 +1077,17 @@ Scene Motion Analysis treats each window as an excerpt that can begin mid-gestur
 
 ### Concise scene observations and black-frame filtering
 
-Scene Motion Analysis summarizes distinct motion and expression changes rather than writing an event per sampled image. It contains no example gesture to copy. Routine speech-like lip motion is summarized once; visible distinctive expressions remain relevant. These instructions improve concision but do not make model observations factual by themselves.
+For both scene tasks, native Qwen3-VL checks `performance_prompt` as it generates.
+It can stop a sustained loop of sentences, comma-separated clauses or words
+even when the model omits sentence punctuation. The loader keeps distinct
+movements in their original order. If a matching scene and window reply ends
+mid-paragraph, its complete sentences and clauses remain available for editing.
+When neither attempt produces a complete observation and only unfinished wording
+is available, the loader keeps that draft with a review warning. Missing audit
+fields are marked unreported. If the final synthesis fails, the editable prompt
+contains the validated window descriptions in their original order.
+
+Scene Motion Analysis summarizes distinct movement phases. Leave the source mouth out of lip-sync prompts, including statements about absent speaking or singing. The task keeps independent eye, facial and body movement from the same frames.
 
 The loader removes exactly black frames after grouping, stride and resizing, before model inference. Dark frames with any nonzero pixel remain. The request context includes only the frame IDs/timestamps actually sent, with their image count and first/last image ordinals. The model describes the first and last remaining visible samples, without instructions to interpret the omitted black images. Ordinary IMAGE passthrough is unchanged; lazy disk inputs retain no image passthrough.
 

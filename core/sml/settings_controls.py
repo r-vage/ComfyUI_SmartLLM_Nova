@@ -73,8 +73,9 @@ def settings_fields(kind, *, models=None, task_names=None, defaults=None):
                 min=512,
                 max=131072,
                 step=512,
-                tooltip="Maximum context window (tokens) allocated for the model. "
-                "Determines how much history, text, and image tokens the model can process at once. Larger sizes use more VRAM.",
+                tooltip="Token budget for combining observations from multiple image grids or video windows. "
+                "ComfyUI encoders manage their native context allocation. Backends with configurable "
+                "model context also use this value when loading or running the model.",
             ),
             io.Int.Input(
                 "max_tokens",

@@ -1,5 +1,6 @@
 """Text generation through ComfyUI's native CLIP/text encoder API."""
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import RLock
@@ -13,6 +14,7 @@ from .device import resolve_requested_device
 from .gguf_memory import gguf_generation_reserve
 from .logger import log
 from .native_thinking import description_thinking_budget
+from .scene_motion import SCENE_TASK_MODES, recover_scene_paragraph, scene_context_ids
 from .tasks import get_system_prompt
 from .text_encoders import (
     file_signature,
@@ -188,6 +190,60 @@ def _tokenize_for_generation(clip, prompt, architecture, options):
         tokenizer.min_length = minimum
 
 
+@contextmanager
+def _scene_loop_stop(clip, architecture, task_name, prompt):
+    """End a native scene reply early only when its repeated paragraph is recoverable."""
+    if not architecture.startswith("QWEN3VL_") or task_name not in SCENE_TASK_MODES:
+        yield
+        return
+    model = getattr(clip, "cond_stage_model", None)
+    inner = getattr(model, getattr(model, "clip", ""), None)
+    decoder = getattr(inner, "transformer", None)
+    sample = getattr(decoder, "sample_token", None)
+    config = getattr(getattr(decoder, "model", None), "config", None)
+    stops = getattr(config, "stop_tokens", None)
+    if not callable(sample) or not stops:
+        yield
+        return
+    expected = scene_context_ids(prompt)
+    ids = []
+    buffer = None
+    used = 0
+
+    def sample_scene(logits, *args, **kwargs):
+        nonlocal buffer, used
+        token = sample(logits, *args, **kwargs)
+        if token.numel() != 1:
+            return token
+        # Keep a single scratch buffer across steps and batch the device-to-host
+        # transfer. The model's sampler still owns the distribution and seed.
+        if buffer is None:
+            buffer = token.new_empty(128)
+        buffer[used:used + 1].copy_(token.detach().reshape(1))
+        used += 1
+        if used == len(buffer):
+            ids.extend(buffer.tolist())
+            used = 0
+            # The latest token can be replaced by EOS. Check only tokens that
+            # have already been emitted and can be returned to the caller.
+            candidate = recover_scene_paragraph(clip.decode(ids[:-1]), expected, task_name)
+            if candidate is not None and candidate[1]:
+                return torch.full_like(token, stops[0])
+        return token
+
+    # The caller holds the encoder's generation lock. Restore even if inference
+    # is cancelled, including a sampler previously installed on this instance.
+    previous = vars(decoder).get("sample_token")
+    decoder.sample_token = sample_scene
+    try:
+        yield
+    finally:
+        if previous is None:
+            del decoder.sample_token
+        else:
+            decoder.sample_token = previous
+
+
 def generate_comfyui(
     instance: ComfyTextEncoder, *, prompt: str, task_name: str, llm_mode: str | None,
     system_prompt: str | None, use_few_shot: bool, image, max_tokens: int,
@@ -226,9 +282,12 @@ def generate_comfyui(
         if clip is None:
             raise RuntimeError("The native text encoder has been unloaded; run the node again.")
         tokens = _tokenize_for_generation(clip, prompt, architecture, options)
-        with gguf_generation_reserve(clip, tokens, max_tokens, architecture), description_thinking_budget(
-            clip, architecture, task_name, max_tokens, prefilled=thinking_prefilled, enabled=enable_thinking,
-        ) as budget_options:
+        with (
+            _scene_loop_stop(clip, architecture, task_name, prompt),
+            gguf_generation_reserve(clip, tokens, max_tokens, architecture),
+            description_thinking_budget(clip, architecture, task_name, max_tokens,
+                                        prefilled=thinking_prefilled, enabled=enable_thinking) as budget_options,
+        ):
             generated = clip.generate(
                 tokens, do_sample=bool(do_sample and temperature > 0), max_length=max_tokens,
                 temperature=temperature if temperature > 0 else 1.0, top_k=top_k,

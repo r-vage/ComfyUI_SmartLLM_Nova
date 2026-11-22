@@ -89,6 +89,7 @@ from ..core.sml.scene_motion import (
     attach_input_evidence,
     black_scene_observation,
     filter_scene_images,
+    recover_scene_paragraph,
     scene_caption_response,
     scene_context_ids,
     scene_contract_issue,
@@ -972,7 +973,10 @@ def _generate_with_task_contract(task_name, generate, user_prompt="", previous_t
     if task_name in SCENE_TASK_MODES:
         expected = scene_context_ids(user_prompt)
         base = get_system_prompt(task_name)
-        contract = f"\nFor this request the required IDs are scene_id={expected[0]}, window_id={expected[1]}. Fill every observation string with evidence."
+        contract = (f"\nFor this request the required IDs are scene_id={expected[0]}, window_id={expected[1]}. "
+                    "Use complete sentences and state each distinct movement once. When the observed movement "
+                    "is described, close the paragraph string, finish the audit fields and close the JSON object.")
+        partial = None
         for attempt in range(2):
             token = push_system_prompt_override(base + contract)
             try:
@@ -983,7 +987,15 @@ def _generate_with_task_contract(task_name, generate, user_prompt="", previous_t
             if issue is None:
                 review_issue = scene_contract_issue(result, expected, task_name)
                 return tag_scene_description(result, task_name, review_issue=review_issue), data
+            recovered = recover_scene_paragraph(result, expected, task_name, keep_fragment=partial is None)
+            if recovered is not None:
+                paragraph, looping = recovered
+                if looping:
+                    return paragraph, data
+                partial = paragraph, data
             contract += "\nCorrect this response issue on the next attempt: " + issue + "."
+        if partial is not None:
+            return partial
         # The downstream collector preserves the final raw response and reports
         # its exact scene/window; never silently drop or relabel a response.
         return tag_scene_description(result, task_name, issue), data
