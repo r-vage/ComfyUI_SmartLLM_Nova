@@ -1,3 +1,13 @@
+## 2026-11-23
+
+### Version: 1.1.21
+
+- **Fix**
+  - Double-click selects the word under the pointer in panel text fields. Triple-click selects the entire field, including multiline prompts.
+- **Changed files**
+  - js/nova-panel-controls.js
+  - pyproject.toml
+
 ## 2026-11-22
 
 ### Version: 1.1.20
