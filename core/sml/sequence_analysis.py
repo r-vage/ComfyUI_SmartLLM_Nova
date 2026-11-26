@@ -4,10 +4,12 @@ from contextlib import closing
 
 import torch
 
-from .media_inputs import check_interrupt, pack_grid, visual_windows
+from .media_inputs import VisualFrame, check_interrupt, pack_grid, visual_windows
+from .scene_camera import measured_shot_scale, reconcile_camera_response
 from .scene_motion import (
     SCENE_TASK_MODES,
     black_scene_observation,
+    encode_scene_evidence,
     has_recovered_scene_text,
     parse_scene_response,
     scene_context_ids,
@@ -27,7 +29,7 @@ def _context(prompt):
     return {"scene_id": 0, "window_id": 0, "source_context": prompt or ""}, ""
 
 
-def _window_prompt(prompt, frames, batch, layout, window_number):
+def _window_prompt(prompt, frames, batch, layout, window_number, frame_scale=None):
     # Reuse positional mapping for Eclipse disk jobs. The original scene/window
     # IDs stay intact; internal window numbers are separate metadata.
     positions = tuple(frame.position for frame in frames)
@@ -58,7 +60,31 @@ def _window_prompt(prompt, frames, batch, layout, window_number):
         "Respect the selected task's requested format and level of detail. "
         "Summarize repeated motion once; do not infer motion or audio from gaps."
     )
-    return json.dumps(context, ensure_ascii=False) + suffix + "\n" + instruction
+    return _attach_scale_prompt(json.dumps(context, ensure_ascii=False) + suffix + "\n" + instruction, frame_scale)
+
+
+def _attach_scale_prompt(prompt, scale):
+    if not scale:
+        return prompt
+    context, suffix = _context(prompt)
+    context["frame_scale_evidence"] = scale
+    instruction = (
+        f" Matching features across the frame show that the framing progressively {scale['framing']} "
+        f"(image scale ends at {scale['scale_ratio']} times its starting size). "
+        "Describe this change in camera_motion and performance_prompt. Use the samples to identify the opening "
+        "and ending shot sizes when visible. The measurement does not establish how the shot was filmed."
+    )
+    return json.dumps(context, ensure_ascii=False) + suffix + instruction
+
+
+def direct_scene_camera(prompt, image, positions, task, omitted):
+    """Use the same shot measurement for a directly submitted multi-image request."""
+    scale = None
+    if (SCENE_TASK_MODES.get(task) == "motion" and len(image) >= 3 and not omitted
+            and not _context(prompt)[0].get("excluded_source_cuts")):
+        frames = [VisualFrame(pixels, position) for pixels, position in zip(image, positions, strict=True)]
+        scale = measured_shot_scale(frames)
+    return _attach_scale_prompt(prompt, scale), scale
 
 
 def _merge_payload(observation, structured):
@@ -70,6 +96,7 @@ def _merge_payload(observation, structured):
     fields = ("framing", "camera_motion", "appearance", "actions", "gaze_expression", "uncertainties")
     return {key: observation[key] for key in ("shot", "last_shot", "start", "end")} | {
         "observations": {key: value[key] for key in fields if key in value},
+        **({"frame_scale_evidence": observation["frame_scale_evidence"]} if "frame_scale_evidence" in observation else {}),
         # A T2V response may omit the optional appearance audit. Its paragraph
         # is then the only source of appearance/setting detail for synthesis.
         **({"additional_description": value.get("performance_prompt")}
@@ -139,13 +166,15 @@ def _merge(observations, prompt, task, generate, context_size, max_tokens):
         "Preserve separately observed repetitions and distinct intermediate gestures, "
         "framing, camera movement, expressions and all task-appropriate appearance/setting detail. Keep simultaneous actions together. "
         "Start the generation paragraph with opening_framing and scene_start_pose when supplied, and preserve scene_end_pose "
-        "as the ending snapshot. Keep observed framing changes after the opening. "
+        "as the ending snapshot. Keep observed framing changes after the opening. Carry the observed camera angle "
+        "and within-shot camera path into the paragraph, including the direction and endpoint of a zoom. "
+        "Preserve a change of shot size without naming a camera move when its cause is uncertain. "
         "Intermediate window boundaries do not imply a reset or another gesture. "
         "An unchanged shot number does not prove continuous motion: retain reported discontinuities and "
         "uncertainties without inventing connecting movement. "
         "Cover the whole observation sequence, not only its final window. A changed shot number is a cut: preserve the changed framing/pose "
         "without inventing motion across the cut. Do not copy window labels, timestamps or analysis instructions into the prompt. "
-        "Keep the selected task's level of detail without a separate summary length limit. "
+        "Follow the selected task's requested length and level of detail for the generation paragraph. "
         "Do not add unsupported facts. Return only the selected task's final output."
     )
     base = json.dumps(context, ensure_ascii=False) + suffix + "\n" + instruction
@@ -205,9 +234,11 @@ def analyze_sequence(frames, *, prompt, task, generate, instance, grid, capacity
     sent, omitted = {}, set()
     last_data = {}
     width = height = 0
+    measure_camera = SCENE_TASK_MODES.get(task) == "motion" and not _context(prompt)[0].get("excluded_source_cuts")
     with closing(visual_windows(frames, capacity, min(overlap, capacity - 1))) as windows:
         for number, window in enumerate(windows):
             check_interrupt()
+            original_count = len(window)
             if task in SCENE_TASK_MODES:
                 omitted.update(frame.position for frame in window if not torch.count_nonzero(frame.pixels))
                 window = [frame for frame in window if frame.position not in omitted]
@@ -216,15 +247,18 @@ def analyze_sequence(frames, *, prompt, task, generate, instance, grid, capacity
             batch = torch.stack([frame.pixels for frame in window])
             height, width = batch.shape[1:3]
             request, layout = pack_grid(window, instance, grid_side) if grid else (batch, None)
-            request_prompt = _window_prompt(prompt, window, batch, layout, number)
+            scale = measured_shot_scale(window) if measure_camera and len(window) == original_count else None
+            geometry = {"frame_scale_evidence": scale} if scale else {}
+            request_prompt = _window_prompt(prompt, window, batch, layout, number, scale)
             text, last_data = generate(request_prompt, request, len(window), False)
+            text, original_camera = reconcile_camera_response(text, scale)
             observations.append({"response": text, "shot": window[0].shot, "last_shot": window[-1].shot,
                                  "start": window[0].position, "end": window[-1].position,
-                                 "frame_count": len(window)})
+                                 "frame_count": len(window), **geometry})
             requests.append({"positions": [frame.position for frame in window], "shot": window[0].shot,
                              "seconds": [frame.seconds for frame in window],
                              "image_count": len(request), "width": request.shape[2], "height": request.shape[1],
-                             **({"grid": layout} if layout else {})})
+                             **geometry, **original_camera, **({"grid": layout} if layout else {})})
             sent.update({frame.position: frame.seconds for frame in window})
             del batch, request, window
     if not observations:
@@ -238,6 +272,11 @@ def analyze_sequence(frames, *, prompt, task, generate, instance, grid, capacity
     evidence = {"positions": sorted(sent), "image_count": len(sent), "width": width, "height": height,
                 "presentation": "grid" if grid else "frames", "windows": requests,
                 "omitted_black_positions": sorted(omitted), "image_handling": "frame_sequence"}
+    if (len(observations) > 1 and all("frame_scale_evidence" in item for item in observations)
+            and len({(item["shot"], item["frame_scale_evidence"]["framing"]) for item in observations}) == 1):
+        text, original = reconcile_camera_response(text, observations[0]["frame_scale_evidence"])
+        if original:
+            evidence["synthesis_model_camera_wording"] = original["model_camera_wording"]
     if omitted and not sent:
         evidence["skipped_reason"] = "all_black"
     if any(value is not None for value in sent.values()):
@@ -253,5 +292,4 @@ def attach_sequence_evidence(text, evidence, *, longest_side, every_nth):
         return text
     if not isinstance(value, dict):
         return text
-    value["input_evidence"] = {**evidence, "longest_side": longest_side, "every_nth": every_nth}
-    return json.dumps(value, ensure_ascii=False)
+    return encode_scene_evidence(value, {**evidence, "longest_side": longest_side, "every_nth": every_nth})

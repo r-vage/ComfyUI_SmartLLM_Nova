@@ -222,8 +222,11 @@ Use **Together: On** with an ordered frame selection and choose:
 | **Scene Description (T2V)** | Visible appearance, setting, framing and movement for text-to-video |
 
 Both tasks produce a generation paragraph and structured observations in the same
-call per window. Their prompts have no fixed word limit; distinct observed detail
-is retained while repeated actions are summarized once. Exactly black frames are filtered before inference; an all-black selection
+call per window. Scene Motion Analysis asks for one or two short sentences about
+the opening framing and angle, an observed camera move or hold, and the main
+gesture. Additional movements stay in the observation
+fields. Scene Description (T2V) keeps the visible appearance and setting in the
+generation paragraph. Exactly black frames are filtered before inference; an all-black selection
 keeps a black-screen result. Usable descriptions with content warnings remain
 available for manual editing. Invalid JSON or missing required fields can trigger
 one correction attempt and still fail if the structure remains unusable.

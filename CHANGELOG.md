@@ -1,3 +1,19 @@
+## 2026-11-26
+
+### Version: 1.1.22
+
+- **Fix**
+  - Scene Motion Analysis gives the opening framing, visible camera angle and main gesture in one or two short sentences. It follows camera movement through the shot, including the direction and ending framing of an observed zoom. Matching image features provide an independent check for sustained changes of scale within a shot. Additional hand, body and gaze observations remain available in the scene JSON. Multi-window synthesis follows the selected task’s requested paragraph length.
+- **Changed files**
+  - .defaults/tasks/builtin.scene-motion-analysis.json.example
+  - README.md
+  - Readme/Smart_LM_Loader_Guide.md
+  - core/sml/scene_camera.py
+  - core/sml/scene_motion.py
+  - core/sml/sequence_analysis.py
+  - py/RvLoader_SmartLMLoader.py
+  - pyproject.toml
+
 ## 2026-11-23
 
 ### Version: 1.1.21

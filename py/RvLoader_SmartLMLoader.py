@@ -84,6 +84,7 @@ from ..core.sml.model_registry import (
 )
 from ..core.sml.music3 import resolve_source as resolve_music3_source
 from ..core.sml.panel_configuration import SmartLLMPanel
+from ..core.sml.scene_camera import reconcile_camera_response
 from ..core.sml.scene_motion import (
     SCENE_TASK_MODES,
     attach_input_evidence,
@@ -96,7 +97,11 @@ from ..core.sml.scene_motion import (
     scene_request_prompt,
     tag_scene_description,
 )
-from ..core.sml.sequence_analysis import analyze_sequence, attach_sequence_evidence
+from ..core.sml.sequence_analysis import (
+    analyze_sequence,
+    attach_sequence_evidence,
+    direct_scene_camera,
+)
 from ..core.sml.settings_controls import settings_fields
 from ..core.sml.song import active_source, generate_song, normalize_lyric_sheet
 from ..core.sml.tag_output import clean_tag_output
@@ -2348,6 +2353,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                 input_image = None
                 scene_positions = ()
                 omitted_positions = ()
+                camera_scale = None
                 if single_img is not None and model_has_vision and not use_sequence_media:
                     selected = sampled_positions(len(single_img), image_stride) if frame_source is None else tuple(range(len(single_img)))
                     selected_image = single_img[list(selected)] if len(selected) != len(single_img) else single_img
@@ -2376,6 +2382,9 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                 if task in SCENE_TASK_MODES and input_image is not None:
                     input_image, scene_positions, omitted_positions = filter_scene_images(input_image, scene_positions)
                     single_prompt = scene_request_prompt(single_prompt, input_image, scene_positions)
+                    if image_handling == "frame_sequence" and not multi_task_mode:
+                        single_prompt, camera_scale = direct_scene_camera(single_prompt, input_image, scene_positions,
+                                                                         task, omitted_positions)
                 skip_scene_inference = task in SCENE_TASK_MODES and input_image is not None and not len(input_image)
                 # Explicit grouping never truncates to the legacy tail-frame cap.
                 request_frame_count = (len(input_image) if input_image is not None and image_handling != "legacy"
@@ -2493,9 +2502,12 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                     # Only publish measured positions when the sent set is known.
                     or caption_json and (image_handling != "legacy" or len(input_image) == 1)
                 ):
+                    run_res, original_camera = reconcile_camera_response(run_res, camera_scale)
+                    camera_window = ({"positions": list(scene_positions), "frame_scale_evidence": camera_scale,
+                                      **original_camera} if camera_scale else None)
                     run_res = attach_input_evidence(run_res, positions=scene_positions, image=input_image,
                         handling=image_handling, longest_side=max_image_side, every_nth=image_stride,
-                        omitted_positions=omitted_positions)
+                        omitted_positions=omitted_positions, camera_window=camera_window)
                 if media_evidence is not None and (caption_json or final_task in SCENE_TASK_MODES):
                     run_res = attach_sequence_evidence(run_res, media_evidence,
                         longest_side=grid_side if image_grid else max_image_side,
