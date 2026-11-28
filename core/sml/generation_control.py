@@ -53,6 +53,33 @@ def check_cancelled():
     _check_run(_current_run.get())
 
 
+def gguf_chat_completion(model, **options):
+    """Read llama.cpp chat chunks so Stop can interrupt generation between them."""
+    run = _current_run.get()
+    if run is None:
+        return model.create_chat_completion(stream=False, **options)
+    _check_run(run)
+    stream = model.create_chat_completion(stream=True, **options)
+    if isinstance(stream, dict):
+        _check_run(run)
+        return stream
+    parts = []
+    reason = None
+    try:
+        for chunk in stream:
+            _check_run(run)
+            choices = chunk.get("choices", ())
+            if choices:
+                choice = choices[0]
+                parts.append(choice.get("delta", {}).get("content") or "")
+                reason = choice.get("finish_reason") or reason
+    finally:
+        if close := getattr(stream, "close", None):
+            close()
+    _check_run(run)
+    return {"choices": [{"message": {"content": "".join(parts)}, "finish_reason": reason}]}
+
+
 def _check_run(run):
     if run is not None:
         from comfy import model_management

@@ -92,6 +92,7 @@ sizing and stride are inactive. Ordinary image inputs pass through to the output
 
 Some generative tasks intentionally use `user_prompt` as their source material:
 
+- For **MiniMax H3 Story**, enter a short premise under **Prompt**. Set **Story clips** to **1** for one H3 prompt, **0** for an automatic count, or a positive number for exactly that many connected clip prompts. The **text** output carries each complete three-field prompt as a separate list item in playback order.
 - For a Wan or LTX image-to-video task, connect the starting image and describe
   the intended motion, action, dialogue, style, or camera behavior in
   `user_prompt`.

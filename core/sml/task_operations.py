@@ -46,6 +46,7 @@ HANDLERS = {
     "song_lyrics": "lyrics", "music3": "music3", "yue2": "yue2",
     "scene_motion": "scene", "scene_description": "scene",
     "h3_scene": "h3", "h3_t2va": "h3", "h3_i2va": "h3", "h3_fl2va": "h3", "h3_l2va": "h3",
+    "h3_story": "h3_clips",
     "grounding": "geometry", "region_caption": "geometry", "florence": "native",
 }
 

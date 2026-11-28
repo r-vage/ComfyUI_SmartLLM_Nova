@@ -1,3 +1,25 @@
+## 2026-11-28
+
+### Version: 1.1.23
+
+- **Feat**
+  - MiniMax H3 Story turns a short brief into one complete H3 prompt or an ordered list of connected clip prompts. Story clips accepts an exact count or 0 for automatic planning. Each clip carries its own visual description, soundscape and score.
+- **Fix**
+  - Local GGUF chat generation checks Stop between streamed text chunks. Repeat last N is applied when creating the llama.cpp sampler and is included in model reuse.
+- **Changed files**
+  - .defaults/tasks/builtin.minimax-h3-story.json.example
+  - README.md
+  - Readme/Smart_LM_Loader_Guide.md
+  - core/sml/backend_gguf.py
+  - core/sml/generation_control.py
+  - core/sml/h3_story.py
+  - core/sml/loader_base.py
+  - core/sml/task_library.py
+  - core/sml/task_operations.py
+  - js/nova-task-library.js
+  - py/RvLoader_SmartLMLoader.py
+  - pyproject.toml
+
 ## 2026-11-26
 
 ### Version: 1.1.22

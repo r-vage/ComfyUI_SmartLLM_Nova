@@ -33,6 +33,7 @@ from ..core.sml.generation_control import (
     set_generation_backend,
     with_generation_control,
 )
+from ..core.sml.h3_story import story_visual, write_story
 from ..core.sml.image_inputs import (
     group_images,
     materialize_source,
@@ -345,8 +346,7 @@ def _build_vlm_prompt(task_name, user_prompt, input_image, *, family="Qwen"):
 
 def _h3_output_contract_issue(task_name, output, image_count, *, story_mode=False):
     # Return a content-safe diagnostic when an H3 response is incomplete.
-    mode = get_h3_mode(task_name)
-    if mode is None:
+    if get_h3_mode(task_name) is None and handler(task_name) != "h3_story":
         return None
 
     text = str(output or "").strip()
@@ -426,9 +426,15 @@ def _h3_field_bodies(output):
 def _normalize_h3_output(task_name, output, image_count):
     # Reference-image placement is transport metadata, not part of the motion
     # prompt. Drop any leading preamble from older/custom prompts or model output.
-    mode = get_h3_mode(task_name)
     text = str(output or "").strip()
-    if mode is None:
+    if handler(task_name) == "h3_story":
+        fields = _h3_field_bodies(text)
+        if len(_H3_FIELD_PATTERN.findall(text)) == len(_H3_REQUIRED_FIELDS) and len(fields) == len(_H3_REQUIRED_FIELDS):
+            visual_label = _H3_REQUIRED_FIELDS[0]
+            fields[visual_label] = story_visual(fields[visual_label])
+            return "\n\n".join(f"{label}: {fields[label]}" for label in _H3_REQUIRED_FIELDS)
+        return text
+    if get_h3_mode(task_name) is None:
         return text
     resolve_h3_input_mode(task_name, image_count, frame_sequence=sequence_request.get())
     first_field = _H3_FIELD_PATTERN.search(text)
@@ -460,6 +466,8 @@ def _h3_fallback_output(
         )
 
     integrated = _first_body("integrated_multimodal_description")
+    if integrated and handler(task_name) == "h3_story":
+        integrated = story_visual(integrated)
     if integrated:
         if not integrated.startswith("[Shot 1]"):
             integrated = f"[Shot 1] {integrated}"
@@ -968,13 +976,20 @@ def _generate_for_family(
     return result, data
 
 
-def _generate_with_task_contract(task_name, generate, user_prompt="", previous_task=None, source_prompt=None):
+def _generate_with_task_contract(task_name, generate, user_prompt="", previous_task=None, source_prompt=None, *, story_clips=1):
     """Apply output contracts and cleanup to first and chained generations."""
     task_name = canonicalize_task_name(task_name)
-    if handler(task_name) == 'song_lyrics':
+    behavior = handler(task_name)
+    if behavior == "h3_story":
+        def render_clip(request, fallback):
+            text, _ = _complete_h3_prompt(task_name, lambda: generate(request), fallback, 0)
+            return text
+
+        return write_story(user_prompt, story_clips, generate, render_clip), {}
+    if behavior == 'song_lyrics':
         result, data = generate()
         return normalize_lyric_sheet(result), data
-    resolver = {'music3': resolve_music3_source, 'yue2': resolve_yue2_source}.get(handler(task_name))
+    resolver = {'music3': resolve_music3_source, 'yue2': resolve_yue2_source}.get(behavior)
     if task_name in SCENE_TASK_MODES:
         expected = scene_context_ids(user_prompt)
         base = get_system_prompt(task_name)
@@ -1017,16 +1032,19 @@ def _generate_with_h3_recovery(**generation_kwargs):
     # an audio-only or otherwise incomplete prompt to the downstream video model.
     story_mode = bool(generation_kwargs.pop("h3_story_mode", False))
     source_prompt = generation_kwargs.pop("source_prompt", None)
+    story_clips = generation_kwargs.pop("story_clips", 1)
     task_name = canonicalize_task_name(generation_kwargs["task_name"])
     generation_kwargs["task_name"] = task_name
     if observing.get():
         return _generate_for_family(**generation_kwargs)
-    mode = get_h3_mode(task_name)
-    if mode is None:
+    user_prompt = generation_kwargs.get("user_prompt")
+
+    def generate(prompt=user_prompt):
+        return _generate_for_family(**{**generation_kwargs, "user_prompt": prompt})
+
+    if get_h3_mode(task_name) is None:
         return _generate_with_task_contract(
-            task_name, lambda: _generate_for_family(**generation_kwargs),
-            user_prompt=generation_kwargs.get("user_prompt"),
-            source_prompt=source_prompt,
+            task_name, generate, user_prompt=user_prompt, source_prompt=source_prompt, story_clips=story_clips,
         )
 
     image_count = sequence_frame_count.get() or _image_frame_count(generation_kwargs.get("input_image"))
@@ -1039,57 +1057,35 @@ def _generate_with_h3_recovery(**generation_kwargs):
     elif story_mode:
         prompt_token = push_system_prompt_override(get_h3_story_system_prompt(task_name))
     try:
-        initial_result, data = _generate_for_family(**generation_kwargs)
-        initial_result = _normalize_h3_output(task_name, initial_result, image_count)
-        issue = _h3_output_contract_issue(
-            task_name, initial_result, image_count, story_mode=story_mode
-        )
-        if issue is None:
-            return initial_result, data
-
-        log.warning(
-            _LOG_PREFIX,
-            f"Incomplete MiniMax H3 output ({issue}); retrying once",
-        )
-        retry_kwargs = dict(generation_kwargs)
-
-        recovery_prompt = _h3_recovery_system_prompt(task_name, image_count)
-        recovery_token = push_system_prompt_override(recovery_prompt)
-        try:
-            result, data = _generate_for_family(**retry_kwargs)
-            result = _normalize_h3_output(task_name, result, image_count)
-        finally:
-            reset_system_prompt_override(recovery_token)
-
-        issue = _h3_output_contract_issue(
-            task_name, result, image_count, story_mode=story_mode
-        )
-        if issue is None:
-            return result, data
-
-        log.warning(
-            _LOG_PREFIX,
-            f"MiniMax H3 corrective retry remained incomplete ({issue}); "
-            "returning a structured fallback",
-            notify=True,
-        )
-        result = _h3_fallback_output(
-            task_name,
-            generation_kwargs.get("user_prompt"),
-            image_count,
-            result,
-            initial_result,
-            story_mode=story_mode,
-        )
-        if isinstance(data, dict):
-            data = dict(data)
-            data["h3_format_fallback"] = True
-        else:
-            data = {"h3_format_fallback": True}
-        return result, data
+        return _complete_h3_prompt(task_name, generate, user_prompt, image_count, story_mode=story_mode)
     finally:
         if prompt_token is not None:
             reset_system_prompt_override(prompt_token)
+
+
+def _complete_h3_prompt(task_name, generate, fallback_prompt, image_count, *, story_mode=False):
+    initial_result, data = generate()
+    initial_result = _normalize_h3_output(task_name, initial_result, image_count)
+    issue = _h3_output_contract_issue(task_name, initial_result, image_count, story_mode=story_mode)
+    if issue is None:
+        return initial_result, data
+
+    log.warning(_LOG_PREFIX, f"Incomplete MiniMax H3 output ({issue}); retrying once")
+    recovery_token = push_system_prompt_override(_h3_recovery_system_prompt(task_name, image_count))
+    try:
+        result, data = generate()
+        result = _normalize_h3_output(task_name, result, image_count)
+    finally:
+        reset_system_prompt_override(recovery_token)
+
+    issue = _h3_output_contract_issue(task_name, result, image_count, story_mode=story_mode)
+    if issue is None:
+        return result, data
+
+    log.warning(_LOG_PREFIX, f"MiniMax H3 corrective retry remained incomplete ({issue}); "
+                "returning a structured fallback", notify=True)
+    result = _h3_fallback_output(task_name, fallback_prompt, image_count, result, initial_result, story_mode=story_mode)
+    return result, {**(data if isinstance(data, dict) else {}), "h3_format_fallback": True}
 
 
 # ============================================================================
@@ -1123,6 +1119,7 @@ def _run_multi_task_chain(
     stop_sequences=None,
     enable_thinking=False,
     direct_system_prompt="",
+    story_clips=1,
 ):
     # Run tasks 2..N sequentially, chaining output → input.
     # Returns (final_result, final_data).
@@ -1154,13 +1151,12 @@ def _run_multi_task_chain(
 
             clear_gguf_state_between_tasks(instance)
 
-        # Song tasks must report an unusable Song Lyrics source, including an empty
-        # one, through its parser instead of silently ending the requested chain.
-        requires_song_source = (
+        # Let tasks with a required source explain an empty result from the previous step.
+        requires_source = handler(task_name) == "h3_story" or (
             handler(task_name) in {'music3', 'yue2'}
             and handler(tasks_to_run[idx - 1]) == 'song_lyrics'
         )
-        if (not current_text or not current_text.strip()) and not requires_song_source:
+        if (not current_text or not current_text.strip()) and not requires_source:
             log.warning(_LOG_PREFIX, f"Task {idx} returned empty, stopping chain", notify=True)
             break
 
@@ -1197,13 +1193,13 @@ def _run_multi_task_chain(
             "stop_sequences": stop_sequences,
         }
 
-        def generate_stage(dispatch_kwargs=dispatch_kwargs):
-            result, _, data, _, _ = _dispatch_generate(instance, **dispatch_kwargs)
+        def generate_stage(prompt=current_text, dispatch_kwargs=dispatch_kwargs):
+            result, _, data, _, _ = _dispatch_generate(instance, **{**dispatch_kwargs, "prompt": prompt})
             return result, data
 
         task_result, task_data = _generate_with_task_contract(
             task_name, generate_stage, user_prompt=current_text,
-            previous_task=canonicalize_task_name(tasks_to_run[idx - 1]),
+            previous_task=canonicalize_task_name(tasks_to_run[idx - 1]), story_clips=story_clips,
         )
 
         all_results.append(
@@ -1708,6 +1704,8 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                     "keep_model_loaded", default=False, label_on="ON", label_off="OFF"
                 ),
                 io.String.Input("task_sequence", default="", optional=True, tooltip="Ordered task IDs selected in Tasks."),
+                io.Int.Input("story_clips", default=1, min=0, step=1, optional=True,
+                             tooltip="MiniMax H3 Story: one complete H3 text item per clip. 0 lets the model plan the count."),
                 io.String.Input("direct_system_prompt", default="", optional=True, multiline=True,
                                 tooltip="Local Direct Chat system instructions. Empty uses the task file."),
                 io.Boolean.Input(
@@ -1849,6 +1847,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
         video_cut_threshold=27.0,
         task_sequence="",
         direct_system_prompt="",
+        story_clips=1,
     ):
         start_time = time.time()
 
@@ -1924,6 +1923,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
         selected_references = task_references({'task': task, 'task_2': task_2, 'task_3': task_3, 'task_4': task_4,
                                               'multi_task_mode': multi_task_mode, 'task_sequence': task_sequence})
         task = selected_references[0]
+        story_clips = _unwrap_scalar(story_clips, 1)
         direct_system_prompt = _unwrap_scalar(direct_system_prompt, "")
         max_tokens = _unwrap_scalar(max_tokens, 2048)
         context_size = _unwrap_scalar(context_size, 8192)
@@ -2227,6 +2227,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
             tensor_parallel_size=entry.get("tensor_parallel"),
             data_parallel_size=entry.get("data_parallel"),
             text_encoder_entry=entry if backend == "comfyui" else None,
+            repeat_last_n=repeat_last_n,
         )
         cleanup_state["instance"] = model_obj
 
@@ -2421,6 +2422,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                                 mirostat_tau=mirostat_tau,
                                 repeat_last_n=repeat_last_n,
                                 stop_sequences=stop_list,
+                                story_clips=story_clips,
                                 h3_story_mode=_should_use_h3_story_mode(
                                     task,
                                     prompt,
@@ -2465,7 +2467,7 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                     if len(tasks_to_run) > 1:
                         run_res, run_data = _run_multi_task_chain(
                             tasks_to_run=tasks_to_run,
-                            direct_system_prompt=direct_system_prompt,
+                            direct_system_prompt=direct_system_prompt, story_clips=story_clips,
                             first_result=run_res,
                             first_data=run_data,
                             instance=instance,
@@ -2491,7 +2493,8 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                         )
                         final_task = tasks_to_run[-1]
 
-                caption_json = scene_json and final_task not in SCENE_TASK_MODES and (input_image is not None or media_evidence is not None)
+                story_list = isinstance(run_res, list)
+                caption_json = scene_json and not story_list and final_task not in SCENE_TASK_MODES and (input_image is not None or media_evidence is not None)
                 if caption_json:
                     visual_text = (_h3_field_bodies(run_res).get("integrated_multimodal_description")
                                    if get_h3_mode(final_task) is not None else None)
@@ -2512,7 +2515,10 @@ class RvLoader_SmartModelLoader_LM(SmartLLMPanel, io.ComfyNode):
                     run_res = attach_sequence_evidence(run_res, media_evidence,
                         longest_side=grid_side if image_grid else max_image_side,
                         every_nth=1 if videos else image_stride)
-                results.append(run_res)
+                if story_list:
+                    results.extend(run_res)
+                else:
+                    results.append(run_res)
                 # Keep output_image passthrough matching input image layout
                 img_out = (
                     single_img if single_img is not None else torch.zeros((1, 64, 64, 3))

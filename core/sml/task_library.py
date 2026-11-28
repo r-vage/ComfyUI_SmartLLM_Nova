@@ -117,6 +117,8 @@ def validate_task(value, *, legacy=False):
         raise ValueError("Detection tasks require a supported spatial or Florence operation.")
     if value["handler"] in {"grounding", "region_caption", "florence", "scene_motion", "scene_description"} and input_spec["images"] != "required":
         raise ValueError("This operation requires image input.")
+    if value["handler"] == "h3_story" and (input_spec["text"] != "required" or input_spec["images"] != "none"):
+        raise ValueError("H3 story clips require a text brief and use no image input.")
     if value["handler"] == "grounding" and (input_spec["query"] != "terms" or input_spec["text"] != "required"):
         raise ValueError("Phrase grounding requires query text and the terms policy.")
     if input_spec["query"] == "terms" and value["handler"] != "grounding":
@@ -383,7 +385,7 @@ def validate_plan(references, entry, kind="loader", *, scene_json=False):
         if task.id in {previous.id for previous in selected}:
             raise ValueError("A task may only be selected once in a chain.")
         selected.append(task)
-    if scene_json and selected and selected[-1].output not in {"text", "h3", "scene"}:
+    if scene_json and selected and selected[-1].output not in {"text", "h3", "h3_clips", "scene"}:
         raise ValueError("Scene JSON requires visual prose, H3 or a scene observation task.")
     return selected
 

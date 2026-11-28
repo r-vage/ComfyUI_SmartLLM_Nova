@@ -888,6 +888,20 @@ animate only subtle motion supported by visible image content instead of
 inventing a new plot; the explicit empty Scene story mode is the exception.
 Edit task instructions if a small-context model needs a shorter prompt; preserve the required output fields.
 
+### MiniMax H3 Story
+
+Select **MiniMax H3 Story** under **Video & Scenes** and enter a short premise in **Prompt**. A connected **user_prompt** can supply the brief. A nonblank **system_prompt** selects Direct Chat. Include any starting positions, ending, camera direction, ambience or score you want to carry through the sequence. For example, “A whale falls from an ocean suspended over a castle. A mage dives below it, catches it with a shield from her staff and guides it back into the water above. Follow them in one continuous camera move. Keep the waterfall rumble and the same instrumental strings throughout.”
+
+Set **Story clips** in the **Prompt** section.
+
+- **1** (default) writes one complete H3 prompt covering the whole story.
+- **0** lets the model outline the story and choose how many clips it needs.
+- **Any positive count**, such as **5**, writes exactly that many consecutive prompts per brief. The loader plans the beats, then writes each clip in order with the original brief, the preceding clip's ending view and its sound cues. Each model request has its own **Max tokens** budget. **Context size** needs room for the brief, the preceding clip and the new reply. A missing or malformed outline falls back to the requested count, or one clip in automatic mode.
+
+The loader's **text** socket carries one STRING item per clip in playback order. Each contains `integrated_multimodal_description` beginning with `[Shot 1]`, followed by `overall_soundscape` and `non_diegetic_music`. A connected list of briefs starts a separate story for each one. Reference images for video generation go to the video model. To derive the brief from an image, a description task can feed the story task as the final step of a task chain.
+
+In Eclipse's **Video Timeline Planner**, connect **text** directly to **scene_prompts**. Choose **Seconds per clip** and **Separate at cuts** for a separate render per story beat. Use **Continue shot** on the outgoing transitions to carry motion between renders. To retain the story's audio fields, leave the manual sound description blank and keep audio fields out of the global direction. For several shot directions inside a single render, the existing H3 Timeline tasks accept a shot count in the prompt.
+
 ### Stories and songs with visual support
 
 **Short Story**, **Song Lyrics**, **MiniMax Music 3** and **YuE2 Music** accept

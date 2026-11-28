@@ -1085,6 +1085,9 @@ def load_model_with_backend(
 
         # Determine GPU layers (-1 = full offload for CUDA)
         n_gpu_layers = -1 if device.type != 'cpu' else 0
+        repeat_window = kwargs.get("repeat_last_n", 64)
+        if repeat_window == -1:
+            repeat_window = context_size
 
         # ============================================================================
         # GGUF Model Cache Check (Native llama-cpp-python ONLY)
@@ -1095,6 +1098,8 @@ def load_model_with_backend(
         # With proper KV cache clearing between calls, GGUF models can be safely reused.
         # ============================================================================
         gguf_cache_key = get_gguf_cache_key(str(model_file), context_size) + f':device={device}'
+        if repeat_window != 64:
+            gguf_cache_key += f":repeat_window={repeat_window}"
         current_gguf_cached_key = get_cached_gguf_model_key()
 
         if current_gguf_cached_key and current_gguf_cached_key != gguf_cache_key:
@@ -1173,6 +1178,7 @@ def load_model_with_backend(
                     chat_handler=chat_handler,
                     n_ctx=context_size,
                     n_gpu_layers=n_gpu_layers,
+                    last_n_tokens_size=repeat_window,
                     main_gpu=device.index or 0, split_mode=0,
                     n_batch=n_batch,
                     verbose=False,
@@ -1193,6 +1199,7 @@ def load_model_with_backend(
                     model_path=str(model_file),
                     n_ctx=context_size,
                     n_gpu_layers=n_gpu_layers,
+                    last_n_tokens_size=repeat_window,
                     main_gpu=device.index or 0, split_mode=0,
                     n_batch=n_batch,
                     verbose=False,
@@ -1229,6 +1236,7 @@ def load_model_with_backend(
                         chat_handler=chat_handler,
                         n_ctx=context_size,
                         n_gpu_layers=n_gpu_layers,
+                        last_n_tokens_size=repeat_window,
                         main_gpu=device.index or 0, split_mode=0,
                         n_batch=n_batch,
                         verbose=False,
@@ -1265,6 +1273,7 @@ def load_model_with_backend(
                     model_path=str(model_file),
                     n_ctx=context_size,
                     n_gpu_layers=n_gpu_layers,
+                    last_n_tokens_size=repeat_window,
                     main_gpu=device.index or 0, split_mode=0,
                     n_batch=n_batch,
                     verbose=False,
@@ -1315,6 +1324,7 @@ def load_model_with_backend(
                     chat_handler=chat_handler,
                     n_ctx=context_size,
                     n_gpu_layers=n_gpu_layers,
+                    last_n_tokens_size=repeat_window,
                     main_gpu=device.index or 0, split_mode=0,
                     n_batch=n_batch,
                     verbose=False,

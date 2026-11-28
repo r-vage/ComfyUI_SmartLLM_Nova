@@ -213,6 +213,10 @@ export class TaskLibrary {
         const ids = this.selected, task = this.find(ids[0]);
         if (!task) return;
         const form = this.form, native = form.entry?.family === 'Florence';
+        if (this.find(ids.at(-1))?.handler === 'h3_story') {
+            form.field(parent, 'story_clips');
+            parent.append(element('div', 'sln-panel-note', '1 writes a single prompt. Enter a clip count, or use 0 to let the story determine its length.'));
+        }
         const details = element('details', 'sln-task-preview'); details.append(element('summary', '', native ? 'Native task instructions' : 'System instructions · preview'));
         const text = element('textarea'); text.readOnly = true; text.rows = 5; text.setAttribute('aria-label', 'Effective system instructions');
         const note = element('div', 'sln-panel-note');
@@ -289,7 +293,7 @@ export class TaskLibrary {
             Object.entries(this.groups).filter(([key]) => key !== 'detection'));
         const behaviors = { chat: 'Free-form text', direct_chat: 'Direct Chat', story: 'Story', tags_to_text: 'Tags to text', text_to_tags: 'Text to tags',
             song_lyrics: 'Lyric sheet', music3: 'MiniMax Music 3 JSON', yue2: 'YuE2 JSON', scene_motion: 'Scene motion JSON',
-            scene_description: 'Full scene JSON', h3_scene: 'H3 scene', h3_t2va: 'H3 text timeline', h3_i2va: 'H3 first-image timeline',
+            scene_description: 'Full scene JSON', h3_story: 'H3 story clip list', h3_scene: 'H3 scene', h3_t2va: 'H3 text timeline', h3_i2va: 'H3 first-image timeline',
             h3_fl2va: 'H3 first/last-image timeline', h3_l2va: 'H3 last-image timeline', grounding: 'Grounding targets', region_caption: 'Detect objects', florence: 'Florence native task' };
         bind('Output / behavior', draft.handler, value => { draft.handler = value; }, false,
             Object.keys(this.catalog.handlers).filter(key => !detection || ['grounding', 'region_caption', 'florence'].includes(key)).map(key => [key, behaviors[key] ?? key]));

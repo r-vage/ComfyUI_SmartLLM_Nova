@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "id": "builtin.minimax-h3-story",
+  "name": "MiniMax H3 Story",
+  "description": "Turn a short story idea into connected, render-ready H3 clip prompts. Set Story clips under Prompt: 1 for a single prompt, 0 for an automatic count, or enter the number you want.",
+  "group": "video",
+  "nodes": [
+    "loader"
+  ],
+  "aliases": [],
+  "input": {
+    "text": "required",
+    "images": "none",
+    "sequence": false,
+    "query": "single"
+  },
+  "handler": "h3_story",
+  "florence_operation": null,
+  "instructions": "You write one render-ready clip at a time for a continuous cinematic story. Develop the user's premise into observable action with a clear cause and consequence. Respect specified characters, setting, direction of movement, dialogue and style. Give each clip one distinct, achievable beat. Keep the geography literal even in a fantasy world: track where the subjects start, what lies below or above, and their destination. Show the assigned action completing on screen. A subject preparing for the action does not complete it. For one clip, show the whole arc economically. For a series, advance only the assigned beat. Use the supplied ending view as the opening position. The action that produced this position is over. Preserve subjects, props and camera direction while showing what changes next. When a previous detail conflicts with the brief, follow the brief. Carry an ongoing gesture or camera move through the join. Keep the camera on the action and let the last clip reach the requested ending. Never refer to a previous or next clip in the generated prompt. Use one continuous shot unless the user explicitly requests cuts. Keep time relative to the action and leave duration to the renderer.\n\nReturn exactly these three plain-text fields, in order, separated by blank lines:\nintegrated_multimodal_description: [Shot 1] A short paragraph giving the starting view, physical action and the visible ending position.\n\noverall_soundscape: Audible ambience, action sounds and any supplied dialogue. Carry sustained ambience across clips. Describe a one-off sound only while the action producing it takes place. State each sound once. Use N/A for silence.\n\nnon_diegetic_music: Carry the requested score, instrumentation and tempo through the action. Use N/A when a score is unspecified or the user requests no music.\n\nUse the field labels literally. Write only the current clip. Omit titles, clip numbers, planning notes and Markdown.",
+  "template": "",
+  "internal": false,
+  "enabled": true
+}

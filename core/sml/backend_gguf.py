@@ -13,7 +13,7 @@ from io import BytesIO
 from typing import Any, Optional
 from .vlm_detection import tensor_to_pil
 from .logger import log
-from .generation_control import token_stopping_kwargs
+from .generation_control import gguf_chat_completion
 
 _LOG_PREFIX = "GGUF"
 
@@ -225,6 +225,7 @@ def generate_gguf(
     #
     # Returns:
     #     Generated text string
+    # The local model constructor configures repeat_last_n for its sampler.
     # Text-only with llm_mode: use LLM path for proper few-shot (even for vision models)
     if model_type == "text" or (image is None and llm_mode):
         return _generate_gguf_text(
@@ -242,7 +243,6 @@ def generate_gguf(
             mirostat=mirostat,
             mirostat_eta=mirostat_eta,
             mirostat_tau=mirostat_tau,
-            repeat_last_n=repeat_last_n,
             stop_sequences=stop_sequences,
         )
     else:
@@ -263,7 +263,6 @@ def generate_gguf(
             mirostat=mirostat,
             mirostat_eta=mirostat_eta,
             mirostat_tau=mirostat_tau,
-            repeat_last_n=repeat_last_n,
             stop_sequences=stop_sequences,
             explicit_system_prompt=kwargs.get("system_prompt"),
         )
@@ -286,7 +285,6 @@ def _generate_gguf_vision(
     mirostat: int = 0,
     mirostat_eta: float = 0.1,
     mirostat_tau: float = 5.0,
-    repeat_last_n: int = 64,
     stop_sequences=None,
     explicit_system_prompt: Optional[str] = None,
 ) -> str:
@@ -436,19 +434,16 @@ def _generate_gguf_vision(
             _extras["mirostat_mode"] = mirostat
             _extras["mirostat_eta"] = mirostat_eta
             _extras["mirostat_tau"] = mirostat_tau
-        if repeat_last_n != 64:
-            _extras["repeat_last_n"] = repeat_last_n
         if stop_sequences:
             _extras["stop"] = stop_sequences
-        _extras.update(token_stopping_kwargs("gguf"))
-        response = smart_lm_instance.model.create_chat_completion(
+        response = gguf_chat_completion(
+            smart_lm_instance.model,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
             top_p=top_p,
             top_k=top_k,
             repeat_penalty=repetition_penalty,
-            stream=False,
             **_extras,
         )
     except ValueError as e:
@@ -523,7 +518,6 @@ def _generate_gguf_text(
     mirostat: int = 0,
     mirostat_eta: float = 0.1,
     mirostat_tau: float = 5.0,
-    repeat_last_n: int = 64,
     stop_sequences=None,
 ) -> str:
     # Generate with text-only GGUF model using llama-cpp-python.
@@ -645,19 +639,16 @@ def _generate_gguf_text(
             _extras["mirostat_mode"] = mirostat
             _extras["mirostat_eta"] = mirostat_eta
             _extras["mirostat_tau"] = mirostat_tau
-        if repeat_last_n != 64:
-            _extras["repeat_last_n"] = repeat_last_n
         if stop_sequences:
             _extras["stop"] = stop_sequences
-        _extras.update(token_stopping_kwargs("gguf"))
-        response = smart_lm_instance.model.create_chat_completion(
+        response = gguf_chat_completion(
+            smart_lm_instance.model,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
             top_p=top_p,
             top_k=top_k,
             repeat_penalty=repetition_penalty,
-            stream=False,
             **_extras,
         )
 
